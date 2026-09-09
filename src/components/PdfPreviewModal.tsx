@@ -7,7 +7,6 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  FileSpreadsheet,
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { SmvFormData } from '../types/smv';
@@ -17,7 +16,6 @@ import {
   getSmvDocumentFileName,
 } from '../lib/smvRules';
 import { createPdfDocument, generatePdf } from '../lib/generatePdf';
-import { generateExcel } from '../lib/generateExcel';
 
 // Configure pdfjs worker URL via CDN matching installed version for 100% reliable cross-browser rendering
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.10.38'}/pdf.worker.min.mjs`;
@@ -106,12 +104,6 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   const handleDownloadPdf = async () => {
     const res = await generatePdf({ formData });
     setDownloadMessage(`Documento PDF "${res.fileName}" baixado com sucesso!`);
-    setTimeout(() => setDownloadMessage(null), 4000);
-  };
-
-  const handleDownloadExcel = async () => {
-    const res = await generateExcel({ formData });
-    setDownloadMessage(`Planilha Excel "${res.fileName}" gerada com sucesso!`);
     setTimeout(() => setDownloadMessage(null), 4000);
   };
 
@@ -219,16 +211,8 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
-              onClick={handleDownloadExcel}
-              className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              BAIXAR EXCEL
-            </button>
-            <button
-              type="button"
               onClick={handleDownloadPdf}
-              className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
+              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
             >
               <FileDown className="w-4 h-4" />
               BAIXAR PDF

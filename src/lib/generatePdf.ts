@@ -133,7 +133,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
   const black = rgb(0, 0, 0);
   const grayLine = rgb(0, 0, 0);
   const lightGrayBg = rgb(0.96, 0.96, 0.96);
-  const borderWidthDefault = 0.35; // Linhas finas, precisas e institucionais
+  const borderWidthDefault = 0.25; // Linhas finas, precisas e institucionais
 
   // Geometry
   const marginX = 25;
@@ -384,8 +384,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r7H;
 
-  // 9. ROW 8: OBSERVAÇÕES / CROQUI (Height: 370pt - ampliado em 25pt)
-  const croquiH = 370;
+  // 9. ROW 8: OBSERVAÇÕES / CROQUI (Height: 386pt - ampliado para maior aproveitamento de croqui/fotos)
+  const croquiH = 386;
   drawCellRect(marginX, currentY, tableWidth, croquiH);
   page.drawText('OBSERVAÇÕES / CROQUI:', {
     x: marginX + 4,
@@ -703,8 +703,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= encH;
 
-  // 13. ROW 12: PROVIDÊNCIAS TOMADAS (Height: 75pt - espaço ampliado para anotações manuais)
-  const provH = 75;
+  // 13. ROW 12: PROVIDÊNCIAS TOMADAS (Height: 60pt - espaço otimizado para anotações manuais e equilíbrio A4)
+  const provH = 60;
   drawCellRect(marginX, currentY, tableWidth, provH);
   page.drawText('PROVIDÊNCIAS TOMADAS:', {
     x: marginX + 4,

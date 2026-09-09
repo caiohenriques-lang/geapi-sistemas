@@ -63,10 +63,10 @@ export const SmvForm: React.FC = () => {
   });
 
   // Form State
+  const [formKey, setFormKey] = useState<number>(0);
   const [formData, setFormData] = useState<SmvFormData>(getInitialFormData());
 
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
-  const [responsavelTecnicoManual, setResponsavelTecnicoManual] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
   const [validation, setValidation] = useState<{
     isValid: boolean;
@@ -156,22 +156,12 @@ export const SmvForm: React.FC = () => {
     }));
   };
 
-  // Handler for Solicitante selection: copies to Responsável Técnico ONLY ONCE if RT hasn't been manually set
+  // Handler for Solicitante selection: automatically copies identicamente to Responsável Técnico (locked)
   const handleSolicitanteChange = (servidorId: string) => {
     const found = SERVIDORES_LISTA.find((s) => s.id === servidorId) || null;
     setFormData((prev) => ({
       ...prev,
       solicitante: found,
-      responsavelTecnico: responsavelTecnicoManual ? prev.responsavelTecnico : found,
-    }));
-  };
-
-  // Handler for Responsável Técnico selection (marks as manually changed)
-  const handleResponsavelTecnicoChange = (servidorId: string) => {
-    const found = SERVIDORES_LISTA.find((s) => s.id === servidorId) || null;
-    setResponsavelTecnicoManual(true);
-    setFormData((prev) => ({
-      ...prev,
       responsavelTecnico: found,
     }));
   };
@@ -218,10 +208,10 @@ export const SmvForm: React.FC = () => {
         fileInput.value = '';
       }
 
-      // Reset all states to initial zero state
+      // Reset all states to initial zero state and increment key to reinitialize all child components
       setFormData(getInitialFormData());
+      setFormKey((prev) => prev + 1);
       setHasAttemptedSubmit(false);
-      setResponsavelTecnicoManual(false);
       setActionSuccessMsg(null);
       setValidation({ isValid: false, errors: {} });
       setIsPreviewOpen(false);
@@ -270,7 +260,7 @@ export const SmvForm: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-6 px-4 sm:px-6">
+    <div key={formKey} className="w-full max-w-5xl mx-auto py-6 px-4 sm:px-6">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Page Title & Header Banner - Minimalist, light/neutral styling, NO logo here */}
         <div className="bg-slate-50 border-b border-slate-200 p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -429,7 +419,7 @@ export const SmvForm: React.FC = () => {
                 required
                 error={getFieldError('solicitante')}
                 isInitialEmptyPending={!formData.solicitante}
-                helpText="Ao selecionar, preenche o Responsável Técnico caso não tenha sido alterado manualmente."
+                helpText="Ao selecionar, preenche e sincroniza identicamente o Responsável Técnico."
               />
 
               {/* ÁREA */}
@@ -454,19 +444,39 @@ export const SmvForm: React.FC = () => {
                 </p>
               </div>
 
-              {/* RESPONSÁVEL TÉCNICO */}
-              <AutocompleteSelect
-                id="responsavelTecnico"
-                label="Responsável Técnico"
-                options={servidorOptions}
-                value={formData.responsavelTecnico?.id || ''}
-                onChange={handleResponsavelTecnicoChange}
-                placeholder="DIGITE PARA BUSCAR RESPONSÁVEL TÉCNICO..."
-                required
-                error={getFieldError('responsavelTecnico')}
-                isInitialEmptyPending={!formData.responsavelTecnico}
-                helpText="Pode ser alterado independentemente para outro servidor da lista."
-              />
+              {/* RESPONSÁVEL TÉCNICO - TRAVADO E PREENCHIDO IDENTICAMENTE AO SOLICITANTE */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Responsável Técnico <span className="text-rose-500 font-bold">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={
+                      formData.responsavelTecnico
+                        ? formData.responsavelTecnico.formattedLabel
+                        : ''
+                    }
+                    placeholder="PREENCHIDO AUTOMATICAMENTE PELO SOLICITANTE..."
+                    disabled
+                    readOnly
+                    className={`w-full pl-9 pr-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-lg border cursor-not-allowed uppercase placeholder:normal-case placeholder:text-slate-400 ${
+                      !formData.responsavelTecnico ? 'border-rose-300' : 'border-slate-200'
+                    }`}
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Campo travado: preenchido identicamente ao Solicitante.
+                </p>
+                {getFieldError('responsavelTecnico') && (
+                  <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('responsavelTecnico')}
+                  </p>
+                )}
+              </div>
 
               {/* GERENTE DA ÁREA */}
               <div>
