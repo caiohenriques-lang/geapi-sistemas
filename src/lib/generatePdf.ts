@@ -16,17 +16,19 @@ export interface GeneratePdfOptions {
 async function getCleanImageData(
   photo: SmvPhotoItem
 ): Promise<{ bytes: ArrayBuffer; format: 'png' | 'jpg' } | null> {
+  const activeUrl = photo.annotatedObjectUrl || photo.objectUrl;
+
   // 1. Tentar ler ArrayBuffer direto
   try {
     let buf: ArrayBuffer | null = null;
-    if (photo.file) {
-      buf = await photo.file.arrayBuffer();
-    } else if (photo.objectUrl) {
-      const res = await fetch(photo.objectUrl);
+    if (activeUrl) {
+      const res = await fetch(activeUrl);
       buf = await res.arrayBuffer();
+    } else if (photo.file) {
+      buf = await photo.file.arrayBuffer();
     }
     if (buf) {
-      const isPng = photo.file?.type === 'image/png';
+      const isPng = !photo.annotatedObjectUrl && photo.file?.type === 'image/png';
       return { bytes: buf, format: isPng ? 'png' : 'jpg' };
     }
   } catch (err) {
@@ -34,9 +36,9 @@ async function getCleanImageData(
   }
 
   // 2. Fallback: Canvas normalization
-  if (photo.objectUrl || photo.file) {
+  if (activeUrl || photo.file) {
     try {
-      const url = photo.objectUrl || (photo.file ? URL.createObjectURL(photo.file) : '');
+      const url = activeUrl || (photo.file ? URL.createObjectURL(photo.file) : '');
       if (!url) return null;
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -51,7 +53,7 @@ async function getCleanImageData(
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
         const base64 = dataUrl.split(',')[1];
         const binaryStr = atob(base64);
         const len = binaryStr.length;

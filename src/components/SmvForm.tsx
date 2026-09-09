@@ -214,6 +214,13 @@ export const SmvForm: React.FC = () => {
           console.warn('Error revoking object URL:', e);
         }
       }
+      if (f.annotatedObjectUrl) {
+        try {
+          URL.revokeObjectURL(f.annotatedObjectUrl);
+        } catch (e) {
+          console.warn('Error revoking annotated object URL:', e);
+        }
+      }
     });
 
     // 2. Clear all HTML file input elements in DOM

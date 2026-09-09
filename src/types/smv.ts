@@ -10,12 +10,23 @@ export interface ServidorItem {
   matriculaBT: string; // e.g. "BT01748"
 }
 
+export interface AnnotationShape {
+  id: string;
+  type: 'rectangle' | 'arrow';
+  startX: number; // 0..1 (normalized relative coordinate)
+  startY: number; // 0..1
+  endX: number;   // 0..1
+  endY: number;   // 0..1
+}
+
 export interface SmvPhotoItem {
   id: string;
   file: File;
   objectUrl: string;
   name: string;
   observacao?: string;
+  annotations?: AnnotationShape[];
+  annotatedObjectUrl?: string;
 }
 
 export interface SmvFormData {
