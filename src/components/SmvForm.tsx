@@ -74,6 +74,8 @@ export const SmvForm: React.FC = () => {
   }>({ isValid: false, errors: {} });
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isPostDownloadModalOpen, setIsPostDownloadModalOpen] = useState(false);
 
   // Recalculate encaminhamento automatically when tipoSmv changes
   useEffect(() => {
@@ -183,42 +185,54 @@ export const SmvForm: React.FC = () => {
     ensurePaddedNumber();
     const result = validateForm(formData);
     if (result.isValid) {
-      const res = await generatePdf({ formData });
-      setActionSuccessMsg(`Documento "${res.fileName}" baixado com sucesso!`);
-      setTimeout(() => setActionSuccessMsg(null), 4000);
+      try {
+        const res = await generatePdf({ formData });
+        setActionSuccessMsg(`Documento "${res.fileName}" baixado com sucesso!`);
+        setTimeout(() => setActionSuccessMsg(null), 4000);
+        setIsPostDownloadModalOpen(true);
+      } catch (err) {
+        console.error('Error in direct PDF download:', err);
+      }
     } else {
       scrollToFirstError(result.errors);
     }
   };
 
-  const handleResetForm = () => {
-    if (
-      window.confirm(
-        'Tem certeza de que deseja limpar todos os campos e zerar o formulário?'
-      )
-    ) {
-      // Revoke all created photo object URLs to prevent memory leak
-      formData.fotos.forEach((f) => {
-        if (f.objectUrl) URL.revokeObjectURL(f.objectUrl);
-      });
+  // Open the in-app confirmation modal
+  const handleRequestReset = () => {
+    setIsResetModalOpen(true);
+  };
 
-      // Clear HTML file input element if present
-      const fileInput = document.getElementById('photo-file-input') as HTMLInputElement | null;
-      if (fileInput) {
-        fileInput.value = '';
+  // Execute complete reset upon user confirmation
+  const handleConfirmReset = () => {
+    // 1. Revoke all created photo object URLs to prevent memory leak
+    formData.fotos.forEach((f) => {
+      if (f.objectUrl) {
+        try {
+          URL.revokeObjectURL(f.objectUrl);
+        } catch (e) {
+          console.warn('Error revoking object URL:', e);
+        }
       }
+    });
 
-      // Reset all states to initial zero state and increment key to reinitialize all child components
-      setFormData(getInitialFormData());
-      setFormKey((prev) => prev + 1);
-      setHasAttemptedSubmit(false);
-      setActionSuccessMsg(null);
-      setValidation({ isValid: false, errors: {} });
-      setIsPreviewOpen(false);
+    // 2. Clear all HTML file input elements in DOM
+    const fileInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    fileInputs.forEach((input) => {
+      input.value = '';
+    });
 
-      // Scroll smoothly to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // 3. Reset all states to initial zero state
+    setFormData(getInitialFormData());
+    setFormKey((prev) => prev + 1);
+    setHasAttemptedSubmit(false);
+    setActionSuccessMsg(null);
+    setValidation({ isValid: false, errors: {} });
+    setIsPreviewOpen(false);
+    setIsResetModalOpen(false);
+
+    // 4. Scroll smoothly to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const prefixo = getPrefixoByTipoSMV(formData.tipoSmv);
@@ -276,7 +290,7 @@ export const SmvForm: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
             <button
               type="button"
-              onClick={handleResetForm}
+              onClick={handleRequestReset}
               className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               title="Limpar todos os campos e zerar o formulário"
             >
@@ -807,6 +821,17 @@ export const SmvForm: React.FC = () => {
                   <FileDown className="w-4 h-4 text-slate-600" />
                   Baixar PDF
                 </button>
+
+                {/* Bottom Reset Button */}
+                <button
+                  type="button"
+                  onClick={handleRequestReset}
+                  className="px-4 py-3 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+                  title="Limpar formulário"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                  Limpar
+                </button>
               </div>
 
               <div className="text-xs text-slate-500 font-medium flex items-center gap-1">
@@ -823,7 +848,93 @@ export const SmvForm: React.FC = () => {
         formData={formData}
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
+        onDownloadSuccess={() => setIsPostDownloadModalOpen(true)}
       />
+
+      {/* Reset Confirmation Modal - Minimalist & Light design */}
+      {isResetModalOpen && (
+        <div
+          id="reset-confirm-modal"
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+        >
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 max-w-md w-full space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100 shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  Limpar todos os campos
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Tem certeza de que deseja limpar todos os campos? Todos os dados digitados e fotografias serão descartados.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReset}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs"
+              >
+                LIMPAR CAMPOS
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-Download Action Modal - Clear & Minimalist */}
+      {isPostDownloadModalOpen && (
+        <div
+          id="post-download-modal"
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+        >
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 max-w-md w-full space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">
+                  Documento baixado com sucesso
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Tudo certo. Deseja permanecer no site ou iniciar um novo formulário?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsPostDownloadModalOpen(false)}
+                className="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer text-center"
+              >
+                PERMANECER NO SITE
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPostDownloadModalOpen(false);
+                  handleConfirmReset();
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs text-center"
+              >
+                NOVO FORMULÁRIO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

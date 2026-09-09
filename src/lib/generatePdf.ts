@@ -136,9 +136,9 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
   const borderWidthDefault = 0.25; // Linhas finas, precisas e institucionais
 
   // Geometry
-  const marginX = 25;
-  const startY = height - 25; // 816.89
-  const tableWidth = width - 2 * marginX; // 545.28
+  const marginX = 26;
+  const startY = height - 28; // ~813.89pt
+  const tableWidth = width - 2 * marginX; // 543.28pt
 
   const prefixo = getPrefixoByTipoSMV(formData.tipoSmv);
   const fullSmvNumber = formatFullSmvNumber(prefixo, formData.numeroCentral, formData.ano);
@@ -184,14 +184,14 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
     if (label) {
       page.drawText(label, {
         x: x + 4,
-        y: y - 11,
+        y: y - 10,
         size: 7.5,
         font: helveticaBold,
         color: black,
       });
     }
     if (value) {
-      const valY = label ? y - 23 : y - (h / 2) - 3;
+      const valY = label ? y - 20.5 : y - (h / 2) - 3;
       page.drawText(value, {
         x: x + 4,
         y: valY,
@@ -204,15 +204,15 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   let currentY = startY;
 
-  // 1. HEADER ROW (Height: 48pt) - Cabeçalho unificado com Logo no canto superior direito
-  const headerHeight = 48;
+  // 1. HEADER ROW (Height: 44pt) - Cabeçalho unificado com Logo no canto superior direito
+  const headerHeight = 44;
   drawCellRect(marginX, currentY, tableWidth, headerHeight);
 
   // Title on the left side
   page.drawText('S O L I C I T A Ç Ã O   D E   M A N U T E N Ç Ã O   D E   V I A S', {
     x: marginX + 12,
-    y: currentY - 28,
-    size: 11,
+    y: currentY - 26,
+    size: 10.5,
     font: timesBold,
     color: black,
   });
@@ -230,7 +230,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
       }
       if (logoImage) {
         const logoAspect = logoImage.width / logoImage.height;
-        const targetH = 36;
+        const targetH = 32;
         const targetW = targetH * logoAspect;
         const logoX = marginX + tableWidth - targetW - 12;
         const logoY = currentY - headerHeight + (headerHeight - targetH) / 2;
@@ -248,8 +248,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= headerHeight;
 
-  // 2. ROW 1: Nº (Height: 20pt)
-  const numRowH = 20;
+  // 2. ROW 1: Nº (Height: 19pt)
+  const numRowH = 19;
   drawCellRect(marginX, currentY, tableWidth, numRowH);
   page.drawText('Nº', {
     x: marginX + 4,
@@ -259,8 +259,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
     color: black,
   });
   page.drawText(fullSmvNumber, {
-    x: marginX + 30,
-    y: currentY - 14,
+    x: marginX + 28,
+    y: currentY - 13.5,
     size: 10.5,
     font: helveticaBold,
     color: black,
@@ -384,8 +384,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r7H;
 
-  // 9. ROW 8: OBSERVAÇÕES / CROQUI (Height: 386pt - ampliado para maior aproveitamento de croqui/fotos)
-  const croquiH = 386;
+  // 9. ROW 8: OBSERVAÇÕES / CROQUI (Height: 390pt - área dominante e ampliada com equilíbrio perfeito)
+  const croquiH = 390;
   drawCellRect(marginX, currentY, tableWidth, croquiH);
   page.drawText('OBSERVAÇÕES / CROQUI:', {
     x: marginX + 4,
@@ -597,9 +597,9 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= croquiH;
 
-  // 10. ROW 9: RESPONSÁVEL TÉCNICO | GERENTE DA ÁREA (Height: 32pt)
+  // 10. ROW 9: RESPONSÁVEL TÉCNICO | GERENTE DA ÁREA (Height: 28pt)
   // REGRA: RESPONSÁVEL TÉCNICO = SOLICITANTE + MATRÍCULA (ex: CAIO HENRIQUES - BT01748)
-  const sigH = 32;
+  const sigH = 28;
   const halfW = tableWidth / 2;
 
   const respLabel = formData.responsavelTecnico
@@ -629,21 +629,21 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= sigH;
 
-  // 11. ROW 10: DATA | DATA (Height: 22pt)
-  const dateH = 22;
+  // 11. ROW 10: DATA | DATA (Height: 20pt)
+  const dateH = 20;
   const dataVal = formData.dataConfeccao || '';
 
   drawCellRect(marginX, currentY, halfW, dateH);
   page.drawText('DATA:', {
     x: marginX + 4,
-    y: currentY - 14,
+    y: currentY - 13.5,
     size: 7.5,
     font: helveticaBold,
     color: black,
   });
   page.drawText(dataVal, {
     x: marginX + 35,
-    y: currentY - 14,
+    y: currentY - 13.5,
     size: 9,
     font: helvetica,
     color: black,
@@ -652,14 +652,14 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
   drawCellRect(marginX + halfW, currentY, halfW, dateH);
   page.drawText('DATA:', {
     x: marginX + halfW + 4,
-    y: currentY - 14,
+    y: currentY - 13.5,
     size: 7.5,
     font: helveticaBold,
     color: black,
   });
   page.drawText(dataVal, {
     x: marginX + halfW + 35,
-    y: currentY - 14,
+    y: currentY - 13.5,
     size: 9,
     font: helvetica,
     color: black,
@@ -667,12 +667,12 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= dateH;
 
-  // 12. ROW 11: ENCAMINHAMENTO (Height: 28pt)
-  const encH = 28;
+  // 12. ROW 11: ENCAMINHAMENTO (Height: 26pt)
+  const encH = 26;
   drawCellRect(marginX, currentY, tableWidth, encH);
   page.drawText('ENCAMINHAMENTO:', {
     x: marginX + 4,
-    y: currentY - 10,
+    y: currentY - 9.5,
     size: 7.5,
     font: helveticaBold,
     color: black,
@@ -680,14 +680,14 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   page.drawText('PARA:', {
     x: marginX + 4,
-    y: currentY - 22,
+    y: currentY - 20,
     size: 7.5,
     font: helveticaBold,
     color: black,
   });
   page.drawText(formData.encaminhamento || '', {
     x: marginX + 35,
-    y: currentY - 22,
+    y: currentY - 20,
     size: 8.5,
     font: helveticaBold,
     color: black,
@@ -695,7 +695,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   page.drawText('DATA: _____/_____/_________', {
     x: marginX + 370,
-    y: currentY - 22,
+    y: currentY - 20,
     size: 7.5,
     font: helveticaBold,
     color: black,
@@ -703,12 +703,12 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= encH;
 
-  // 13. ROW 12: PROVIDÊNCIAS TOMADAS (Height: 60pt - espaço otimizado para anotações manuais e equilíbrio A4)
-  const provH = 60;
+  // 13. ROW 12: PROVIDÊNCIAS TOMADAS (Height: 65pt - espaço confortável e equilibrado para anotações manuais)
+  const provH = 65;
   drawCellRect(marginX, currentY, tableWidth, provH);
   page.drawText('PROVIDÊNCIAS TOMADAS:', {
     x: marginX + 4,
-    y: currentY - 10,
+    y: currentY - 11,
     size: 7.5,
     font: helveticaBold,
     color: black,

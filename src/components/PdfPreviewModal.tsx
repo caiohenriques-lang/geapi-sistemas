@@ -24,12 +24,14 @@ interface PdfPreviewModalProps {
   formData: SmvFormData;
   isOpen: boolean;
   onClose: () => void;
+  onDownloadSuccess?: () => void;
 }
 
 export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   formData,
   isOpen,
   onClose,
+  onDownloadSuccess,
 }) => {
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
@@ -102,9 +104,16 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   if (!isOpen) return null;
 
   const handleDownloadPdf = async () => {
-    const res = await generatePdf({ formData });
-    setDownloadMessage(`Documento PDF "${res.fileName}" baixado com sucesso!`);
-    setTimeout(() => setDownloadMessage(null), 4000);
+    try {
+      const res = await generatePdf({ formData });
+      setDownloadMessage(`Documento PDF "${res.fileName}" baixado com sucesso!`);
+      setTimeout(() => setDownloadMessage(null), 4000);
+      if (onDownloadSuccess) {
+        onDownloadSuccess();
+      }
+    } catch (err) {
+      console.error('Error generating PDF download:', err);
+    }
   };
 
   return (

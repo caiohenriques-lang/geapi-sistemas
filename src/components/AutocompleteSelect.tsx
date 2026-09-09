@@ -51,6 +51,8 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
       setSearchTerm(selectedOption.label);
     } else {
       setSearchTerm(value || '');
+      setIsOpen(false);
+      setHighlightedIndex(-1);
     }
   }, [value, options]);
 
