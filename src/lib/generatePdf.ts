@@ -11,13 +11,12 @@ export interface GeneratePdfOptions {
 }
 
 /**
- * Robust helper to convert/read image data for pdf-lib embedding.
- * Handles PNG, JPG, JPEG, WebP and falls back to HTML Canvas normalization if needed.
+ * Normaliza e carrega imagem para o pdf-lib com fallback para HTML Canvas se necessário.
  */
 async function getCleanImageData(
   photo: SmvPhotoItem
 ): Promise<{ bytes: ArrayBuffer; format: 'png' | 'jpg' } | null> {
-  // 1. Try reading raw arrayBuffer from File or objectUrl
+  // 1. Tentar ler ArrayBuffer direto
   try {
     let buf: ArrayBuffer | null = null;
     if (photo.file) {
@@ -27,19 +26,18 @@ async function getCleanImageData(
       buf = await res.arrayBuffer();
     }
     if (buf) {
-      const isPng =
-        photo.file?.type === 'image/png' ||
-        photo.name?.toLowerCase().endsWith('.png');
+      const isPng = photo.file?.type === 'image/png';
       return { bytes: buf, format: isPng ? 'png' : 'jpg' };
     }
   } catch (err) {
-    console.warn('Raw fetch failed for photo, falling back to canvas normalization:', err);
+    console.warn('Direct fetch failed for photo, falling back to canvas normalization:', err);
   }
 
-  // 2. Fallback: Normalization via HTML Canvas -> clean JPEG
+  // 2. Fallback: Canvas normalization
   if (photo.objectUrl || photo.file) {
     try {
-      const url = photo.objectUrl || URL.createObjectURL(photo.file);
+      const url = photo.objectUrl || (photo.file ? URL.createObjectURL(photo.file) : '');
+      if (!url) return null;
       const img = new Image();
       img.crossOrigin = 'anonymous';
       await new Promise((resolve, reject) => {
@@ -64,10 +62,60 @@ async function getCleanImageData(
         return { bytes: bytes.buffer, format: 'jpg' };
       }
     } catch (err) {
-      console.error('Canvas normalization failed for photo:', photo.name, err);
+      console.error('Canvas normalization failed for photo:', err);
     }
   }
   return null;
+}
+
+interface FittedBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  observacao?: string;
+  embeddedImg: any;
+}
+
+/**
+ * Calcula a posição e dimensão ideal de uma imagem dentro de um slot (largura x altura disponíveis).
+ */
+function fitImageInSlot(
+  slotX: number,
+  slotY: number, // Bottom Y do slot
+  slotW: number,
+  slotH: number,
+  aspect: number,
+  observacao?: string,
+  embeddedImg?: any
+): FittedBox {
+  const obsHeight = observacao ? 13 : 0;
+  const availH = slotH - obsHeight;
+
+  let drawW = slotW;
+  let drawH = availH;
+
+  if (aspect > slotW / availH) {
+    // Imagem mais larga que o slot: largura é o limitante
+    drawW = slotW;
+    drawH = slotW / aspect;
+  } else {
+    // Imagem mais alta que o slot: altura é o limitante
+    drawH = availH;
+    drawW = availH * aspect;
+  }
+
+  const imgX = slotX + (slotW - drawW) / 2;
+  const imgY = slotY + obsHeight + (availH - drawH) / 2;
+
+  return {
+    x: imgX,
+    y: imgY,
+    width: drawW,
+    height: drawH,
+    observacao,
+    embeddedImg,
+  };
 }
 
 export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Array> {
@@ -85,7 +133,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
   const black = rgb(0, 0, 0);
   const grayLine = rgb(0, 0, 0);
   const lightGrayBg = rgb(0.96, 0.96, 0.96);
-  const borderWidthDefault = 0.4; // Reduced line thickness for a lighter, elegant look
+  const borderWidthDefault = 0.35; // Linhas finas, precisas e institucionais
 
   // Geometry
   const marginX = 25;
@@ -156,20 +204,20 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   let currentY = startY;
 
-  // 1. HEADER ROW (Height: 52pt) - Single unified box, NO vertical line divider
-  const headerHeight = 52;
+  // 1. HEADER ROW (Height: 48pt) - Cabeçalho unificado com Logo no canto superior direito
+  const headerHeight = 48;
   drawCellRect(marginX, currentY, tableWidth, headerHeight);
 
   // Title on the left side
   page.drawText('S O L I C I T A Ç Ã O   D E   M A N U T E N Ç Ã O   D E   V I A S', {
     x: marginX + 12,
-    y: currentY - 30,
+    y: currentY - 28,
     size: 11,
     font: timesBold,
     color: black,
   });
 
-  // Logo on the right side
+  // Logo PBH / BHTRANS no canto superior direito
   try {
     const logoResp = await fetch('/logo_pbh_bhtrans.png');
     if (logoResp.ok) {
@@ -182,7 +230,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
       }
       if (logoImage) {
         const logoAspect = logoImage.width / logoImage.height;
-        const targetH = 38;
+        const targetH = 36;
         const targetW = targetH * logoAspect;
         const logoX = marginX + tableWidth - targetW - 12;
         const logoY = currentY - headerHeight + (headerHeight - targetH) / 2;
@@ -200,29 +248,29 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= headerHeight;
 
-  // 2. ROW 1: Nº (Height: 22pt)
-  const numRowH = 22;
+  // 2. ROW 1: Nº (Height: 20pt)
+  const numRowH = 20;
   drawCellRect(marginX, currentY, tableWidth, numRowH);
   page.drawText('Nº', {
     x: marginX + 4,
-    y: currentY - 14,
-    size: 9,
+    y: currentY - 13,
+    size: 8.5,
     font: helveticaBold,
     color: black,
   });
   page.drawText(fullSmvNumber, {
     x: marginX + 30,
-    y: currentY - 15,
-    size: 11,
+    y: currentY - 14,
+    size: 10.5,
     font: helveticaBold,
     color: black,
   });
 
   currentY -= numRowH;
 
-  // 3. ROW 2: SOLICITANTE | ÁREA (Height: 28pt)
-  // RULE: SOLICITANTE displays ONLY THE NAME (no matrícula, no BT).
-  const r2H = 28;
+  // 3. ROW 2: SOLICITANTE | ÁREA (Height: 26pt)
+  // REGRA: SOLICITANTE exibe SOMENTE O NOME (sem matrícula, sem BT)
+  const r2H = 26;
   const colLeftW = 380;
   const colRightW = tableWidth - colLeftW;
 
@@ -251,8 +299,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r2H;
 
-  // 4. ROW 3: ADMINISTRAÇÃO REGIONAL (Height: 28pt)
-  const r3H = 28;
+  // 4. ROW 3: ADMINISTRAÇÃO REGIONAL (Height: 26pt)
+  const r3H = 26;
   drawLabelValueCell(
     marginX,
     currentY,
@@ -266,8 +314,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r3H;
 
-  // 5. ROW 4: SERVIÇO REFERENTE (Height: 28pt)
-  const r4H = 28;
+  // 5. ROW 4: SERVIÇO REFERENTE (Height: 26pt)
+  const r4H = 26;
   drawLabelValueCell(
     marginX,
     currentY,
@@ -281,8 +329,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r4H;
 
-  // 6. ROW 5: LOGRADOURO | BAIRRO (Height: 28pt)
-  const r5H = 28;
+  // 6. ROW 5: LOGRADOURO | BAIRRO (Height: 26pt)
+  const r5H = 26;
   drawLabelValueCell(
     marginX,
     currentY,
@@ -306,8 +354,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r5H;
 
-  // 7. ROW 6: LOCALIZAÇÃO (Height: 28pt)
-  const r6H = 28;
+  // 7. ROW 6: LOCALIZAÇÃO (Height: 26pt)
+  const r6H = 26;
   drawLabelValueCell(
     marginX,
     currentY,
@@ -321,8 +369,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r6H;
 
-  // 8. ROW 7: TIPO DE PAVIMENTO (Height: 28pt)
-  const r7H = 28;
+  // 8. ROW 7: TIPO DE PAVIMENTO (Height: 26pt)
+  const r7H = 26;
   drawLabelValueCell(
     marginX,
     currentY,
@@ -336,8 +384,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= r7H;
 
-  // 9. ROW 8: OBSERVAÇÕES / CROQUI (Height: 320pt)
-  const croquiH = 320;
+  // 9. ROW 8: OBSERVAÇÕES / CROQUI (Height: 370pt - ampliado em 25pt)
+  const croquiH = 370;
   drawCellRect(marginX, currentY, tableWidth, croquiH);
   page.drawText('OBSERVAÇÕES / CROQUI:', {
     x: marginX + 4,
@@ -347,14 +395,15 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
     color: black,
   });
 
-  // Render photo(s) inside CROQUI box with smart layout optimization
+  // Render photo(s) inside CROQUI box with smart dynamic layout (1 to 4 photos)
   const photoBoxTop = currentY - 16;
   const photoBoxH = croquiH - 20;
   const photoBoxW = tableWidth - 10;
   const photoBoxX = marginX + 5;
+  const photoBoxBottom = photoBoxTop - photoBoxH;
 
   if (formData.fotos && formData.fotos.length > 0) {
-    const photosToRender = formData.fotos.slice(0, 2);
+    const photosToRender = formData.fotos.slice(0, 4);
 
     // Prepare embedded images and compute aspect ratios
     const embeddedList: Array<{
@@ -396,238 +445,152 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
       }
     }
 
-    if (embeddedList.length === 1) {
-      // 1 PHOTO LAYOUT: Maximize available space inside photoBox
+    const count = embeddedList.length;
+    const boxesToDraw: FittedBox[] = [];
+
+    if (count === 1) {
+      // 1 FOTO: Maximiza a área útil do croqui
       const item = embeddedList[0];
-      const hasObs = !!item.observacao;
-      const obsH = hasObs ? 16 : 0;
-      const availH = photoBoxH - obsH;
-
-      const imgAspect = item.aspect;
-      const boxAspect = photoBoxW / availH;
-
-      let drawW = photoBoxW;
-      let drawH = availH;
-
-      if (imgAspect > boxAspect) {
-        drawH = photoBoxW / imgAspect;
-      } else {
-        drawW = availH * imgAspect;
-      }
-
-      const imgX = photoBoxX + (photoBoxW - drawW) / 2;
-      const imgY = (photoBoxTop - photoBoxH) + obsH + (availH - drawH) / 2;
-
-      page.drawImage(item.embeddedImg, {
-        x: imgX,
-        y: imgY,
-        width: drawW,
-        height: drawH,
-      });
-
-      page.drawRectangle({
-        x: imgX,
-        y: imgY,
-        width: drawW,
-        height: drawH,
-        borderColor: rgb(0.8, 0.8, 0.8),
-        borderWidth: 0.35,
-      });
-
-      if (hasObs) {
-        page.drawText(item.observacao!, {
-          x: imgX,
-          y: (photoBoxTop - photoBoxH) + 3,
-          size: 7.5,
-          font: helveticaBold,
-          color: rgb(0.2, 0.2, 0.2),
-        });
-      }
-    } else if (embeddedList.length === 2) {
-      // 2 PHOTOS LAYOUT: Dynamically calculate whether SIDE-BY-SIDE or STACKED uses more total photo area
+      const box = fitImageInSlot(
+        photoBoxX,
+        photoBoxBottom,
+        photoBoxW,
+        photoBoxH,
+        item.aspect,
+        item.observacao,
+        item.embeddedImg
+      );
+      boxesToDraw.push(box);
+    } else if (count === 2) {
+      // 2 FOTOS: Compara LADO A LADO vs EMPILHADAS (calcula qual gera maior área total)
       const gap = 8;
       const item1 = embeddedList[0];
       const item2 = embeddedList[1];
 
-      const obs1H = item1.observacao ? 14 : 0;
-      const obs2H = item2.observacao ? 14 : 0;
+      // Opção A: Lado a Lado
+      const sideW = (photoBoxW - gap) / 2;
+      const box1Side = fitImageInSlot(
+        photoBoxX,
+        photoBoxBottom,
+        sideW,
+        photoBoxH,
+        item1.aspect,
+        item1.observacao,
+        item1.embeddedImg
+      );
+      const box2Side = fitImageInSlot(
+        photoBoxX + sideW + gap,
+        photoBoxBottom,
+        sideW,
+        photoBoxH,
+        item2.aspect,
+        item2.observacao,
+        item2.embeddedImg
+      );
+      const totalAreaSide = box1Side.width * box1Side.height + box2Side.width * box2Side.height;
 
-      // Option A: SIDE-BY-SIDE (Left & Right)
-      const sideSlotW = (photoBoxW - gap) / 2;
-      const sideAvailH1 = photoBoxH - obs1H;
-      const sideAvailH2 = photoBoxH - obs2H;
+      // Opção B: Empilhadas (Uma acima da outra)
+      const stackH = (photoBoxH - gap) / 2;
+      const box1Stack = fitImageInSlot(
+        photoBoxX,
+        photoBoxBottom + stackH + gap,
+        photoBoxW,
+        stackH,
+        item1.aspect,
+        item1.observacao,
+        item1.embeddedImg
+      );
+      const box2Stack = fitImageInSlot(
+        photoBoxX,
+        photoBoxBottom,
+        photoBoxW,
+        stackH,
+        item2.aspect,
+        item2.observacao,
+        item2.embeddedImg
+      );
+      const totalAreaStack = box1Stack.width * box1Stack.height + box2Stack.width * box2Stack.height;
 
-      // Fit 1 side
-      let w1_side = sideSlotW;
-      let h1_side = sideAvailH1;
-      if (item1.aspect > sideSlotW / sideAvailH1) {
-        h1_side = sideSlotW / item1.aspect;
+      if (totalAreaStack > totalAreaSide * 1.05) {
+        boxesToDraw.push(box1Stack, box2Stack);
       } else {
-        w1_side = sideAvailH1 * item1.aspect;
+        boxesToDraw.push(box1Side, box2Side);
       }
-      const area1_side = w1_side * h1_side;
+    } else if (count === 3) {
+      // 3 FOTOS: Layout Dinâmico
+      // Testar: (A) 1 em cima (largura cheia) + 2 embaixo (lado a lado)
+      //         (B) 2 em cima (lado a lado) + 1 embaixo (largura cheia)
+      const gap = 6;
+      const rowH = (photoBoxH - gap) / 2;
+      const colHalfW = (photoBoxW - gap) / 2;
 
-      // Fit 2 side
-      let w2_side = sideSlotW;
-      let h2_side = sideAvailH2;
-      if (item2.aspect > sideSlotW / sideAvailH2) {
-        h2_side = sideSlotW / item2.aspect;
+      const item1 = embeddedList[0];
+      const item2 = embeddedList[1];
+      const item3 = embeddedList[2];
+
+      // Layout A: 1 topo, 2 base
+      const boxA1 = fitImageInSlot(photoBoxX, photoBoxBottom + rowH + gap, photoBoxW, rowH, item1.aspect, item1.observacao, item1.embeddedImg);
+      const boxA2 = fitImageInSlot(photoBoxX, photoBoxBottom, colHalfW, rowH, item2.aspect, item2.observacao, item2.embeddedImg);
+      const boxA3 = fitImageInSlot(photoBoxX + colHalfW + gap, photoBoxBottom, colHalfW, rowH, item3.aspect, item3.observacao, item3.embeddedImg);
+      const areaA = boxA1.width * boxA1.height + boxA2.width * boxA2.height + boxA3.width * boxA3.height;
+
+      // Layout B: 2 topo, 1 base
+      const boxB1 = fitImageInSlot(photoBoxX, photoBoxBottom + rowH + gap, colHalfW, rowH, item1.aspect, item1.observacao, item1.embeddedImg);
+      const boxB2 = fitImageInSlot(photoBoxX + colHalfW + gap, photoBoxBottom + rowH + gap, colHalfW, rowH, item2.aspect, item2.observacao, item2.embeddedImg);
+      const boxB3 = fitImageInSlot(photoBoxX, photoBoxBottom, photoBoxW, rowH, item3.aspect, item3.observacao, item3.embeddedImg);
+      const areaB = boxB1.width * boxB1.height + boxB2.width * boxB2.height + boxB3.width * boxB3.height;
+
+      if (areaA >= areaB) {
+        boxesToDraw.push(boxA1, boxA2, boxA3);
       } else {
-        w2_side = sideAvailH2 * item2.aspect;
+        boxesToDraw.push(boxB1, boxB2, boxB3);
       }
-      const area2_side = w2_side * h2_side;
+    } else if (count === 4) {
+      // 4 FOTOS: Grade 2x2 otimizada
+      const gap = 6;
+      const cellW = (photoBoxW - gap) / 2;
+      const cellH = (photoBoxH - gap) / 2;
 
-      const totalAreaSide = area1_side + area2_side;
+      // Linha superior
+      boxesToDraw.push(
+        fitImageInSlot(photoBoxX, photoBoxBottom + cellH + gap, cellW, cellH, embeddedList[0].aspect, embeddedList[0].observacao, embeddedList[0].embeddedImg),
+        fitImageInSlot(photoBoxX + cellW + gap, photoBoxBottom + cellH + gap, cellW, cellH, embeddedList[1].aspect, embeddedList[1].observacao, embeddedList[1].embeddedImg)
+      );
+      // Linha inferior
+      boxesToDraw.push(
+        fitImageInSlot(photoBoxX, photoBoxBottom, cellW, cellH, embeddedList[2].aspect, embeddedList[2].observacao, embeddedList[2].embeddedImg),
+        fitImageInSlot(photoBoxX + cellW + gap, photoBoxBottom, cellW, cellH, embeddedList[3].aspect, embeddedList[3].observacao, embeddedList[3].embeddedImg)
+      );
+    }
 
-      // Option B: STACKED (Top & Bottom)
-      const stackSlotH = (photoBoxH - gap) / 2;
-      const stackAvailH1 = stackSlotH - obs1H;
-      const stackAvailH2 = stackSlotH - obs2H;
+    // Desenhar imagens calculadas e suas observações
+    for (const box of boxesToDraw) {
+      page.drawImage(box.embeddedImg, {
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+      });
 
-      // Fit 1 stack
-      let w1_stack = photoBoxW;
-      let h1_stack = stackAvailH1;
-      if (item1.aspect > photoBoxW / stackAvailH1) {
-        h1_stack = photoBoxW / item1.aspect;
-      } else {
-        w1_stack = stackAvailH1 * item1.aspect;
-      }
-      const area1_stack = w1_stack * h1_stack;
+      // Borda sutil de enquadramento
+      page.drawRectangle({
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+        borderColor: rgb(0.85, 0.85, 0.85),
+        borderWidth: 0.35,
+      });
 
-      // Fit 2 stack
-      let w2_stack = photoBoxW;
-      let h2_stack = stackAvailH2;
-      if (item2.aspect > photoBoxW / stackAvailH2) {
-        h2_stack = photoBoxW / item2.aspect;
-      } else {
-        w2_stack = stackAvailH2 * item2.aspect;
-      }
-      const area2_stack = w2_stack * h2_stack;
-
-      const totalAreaStack = area1_stack + area2_stack;
-
-      const useStacked = totalAreaStack > totalAreaSide * 1.05;
-
-      if (useStacked) {
-        // RENDER STACKED (Top & Bottom)
-        // Photo 1 (Top)
-        const slot1Y = photoBoxTop - stackSlotH;
-        const img1X = photoBoxX + (photoBoxW - w1_stack) / 2;
-        const img1Y = slot1Y + obs1H + (stackAvailH1 - h1_stack) / 2;
-
-        page.drawImage(item1.embeddedImg, {
-          x: img1X,
-          y: img1Y,
-          width: w1_stack,
-          height: h1_stack,
+      // Observação opcional abaixo da foto
+      if (box.observacao) {
+        page.drawText(box.observacao, {
+          x: box.x,
+          y: Math.max(photoBoxBottom + 2, box.y - 10),
+          size: 7,
+          font: helveticaBold,
+          color: rgb(0.2, 0.2, 0.2),
         });
-        page.drawRectangle({
-          x: img1X,
-          y: img1Y,
-          width: w1_stack,
-          height: h1_stack,
-          borderColor: rgb(0.8, 0.8, 0.8),
-          borderWidth: 0.35,
-        });
-        if (item1.observacao) {
-          page.drawText(item1.observacao, {
-            x: img1X,
-            y: slot1Y + 2,
-            size: 7,
-            font: helveticaBold,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-        }
-
-        // Photo 2 (Bottom)
-        const slot2Y = photoBoxTop - photoBoxH;
-        const img2X = photoBoxX + (photoBoxW - w2_stack) / 2;
-        const img2Y = slot2Y + obs2H + (stackAvailH2 - h2_stack) / 2;
-
-        page.drawImage(item2.embeddedImg, {
-          x: img2X,
-          y: img2Y,
-          width: w2_stack,
-          height: h2_stack,
-        });
-        page.drawRectangle({
-          x: img2X,
-          y: img2Y,
-          width: w2_stack,
-          height: h2_stack,
-          borderColor: rgb(0.8, 0.8, 0.8),
-          borderWidth: 0.35,
-        });
-        if (item2.observacao) {
-          page.drawText(item2.observacao, {
-            x: img2X,
-            y: slot2Y + 2,
-            size: 7,
-            font: helveticaBold,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-        }
-      } else {
-        // RENDER SIDE-BY-SIDE (Left & Right)
-        const slotY = photoBoxTop - photoBoxH;
-
-        // Photo 1 (Left)
-        const slot1X = photoBoxX;
-        const img1X = slot1X + (sideSlotW - w1_side) / 2;
-        const img1Y = slotY + obs1H + (sideAvailH1 - h1_side) / 2;
-
-        page.drawImage(item1.embeddedImg, {
-          x: img1X,
-          y: img1Y,
-          width: w1_side,
-          height: h1_side,
-        });
-        page.drawRectangle({
-          x: img1X,
-          y: img1Y,
-          width: w1_side,
-          height: h1_side,
-          borderColor: rgb(0.8, 0.8, 0.8),
-          borderWidth: 0.35,
-        });
-        if (item1.observacao) {
-          page.drawText(item1.observacao, {
-            x: img1X,
-            y: slotY + 2,
-            size: 7,
-            font: helveticaBold,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-        }
-
-        // Photo 2 (Right)
-        const slot2X = photoBoxX + sideSlotW + gap;
-        const img2X = slot2X + (sideSlotW - w2_side) / 2;
-        const img2Y = slotY + obs2H + (sideAvailH2 - h2_side) / 2;
-
-        page.drawImage(item2.embeddedImg, {
-          x: img2X,
-          y: img2Y,
-          width: w2_side,
-          height: h2_side,
-        });
-        page.drawRectangle({
-          x: img2X,
-          y: img2Y,
-          width: w2_side,
-          height: h2_side,
-          borderColor: rgb(0.8, 0.8, 0.8),
-          borderWidth: 0.35,
-        });
-        if (item2.observacao) {
-          page.drawText(item2.observacao, {
-            x: img2X,
-            y: slotY + 2,
-            size: 7,
-            font: helveticaBold,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-        }
       }
     }
   }
@@ -635,7 +598,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
   currentY -= croquiH;
 
   // 10. ROW 9: RESPONSÁVEL TÉCNICO | GERENTE DA ÁREA (Height: 32pt)
-  // RULE: RESPONSÁVEL TÉCNICO has single BT (e.g. CAIO HENRIQUES - BT01748)
+  // REGRA: RESPONSÁVEL TÉCNICO = SOLICITANTE + MATRÍCULA (ex: CAIO HENRIQUES - BT01748)
   const sigH = 32;
   const halfW = tableWidth / 2;
 
@@ -740,8 +703,8 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
   currentY -= encH;
 
-  // 13. ROW 12: PROVIDÊNCIAS TOMADAS (Height: 54pt - increased height for manual notes space)
-  const provH = 54;
+  // 13. ROW 12: PROVIDÊNCIAS TOMADAS (Height: 75pt - espaço ampliado para anotações manuais)
+  const provH = 75;
   drawCellRect(marginX, currentY, tableWidth, provH);
   page.drawText('PROVIDÊNCIAS TOMADAS:', {
     x: marginX + 4,

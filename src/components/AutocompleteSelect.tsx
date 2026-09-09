@@ -19,6 +19,7 @@ interface AutocompleteSelectProps {
   error?: string;
   disabled?: boolean;
   helpText?: string;
+  isInitialEmptyPending?: boolean;
 }
 
 export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
@@ -32,6 +33,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
   error,
   disabled = false,
   helpText,
+  isInitialEmptyPending = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -149,7 +151,6 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
       setIsOpen(false);
     } else if (e.key === 'Tab') {
       if (isOpen) {
-        // If exact match on tab, select it
         if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
           handleSelect(filteredOptions[highlightedIndex]);
         }
@@ -157,6 +158,8 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
       }
     }
   };
+
+  const isPendingState = isInitialEmptyPending && !value && !disabled;
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -188,11 +191,13 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
           aria-expanded={isOpen}
           aria-controls={listboxId}
           aria-invalid={!!error}
-          className={`w-full pl-9 pr-10 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-xs transition-all outline-none uppercase placeholder:normal-case placeholder:text-slate-400 ${
+          className={`w-full pl-9 pr-10 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none uppercase placeholder:normal-case placeholder:text-slate-400 ${
             error
-              ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-              : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
-          } ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
+              ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'
+              : isPendingState
+              ? 'border-rose-300 bg-rose-50/15 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'
+              : 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'
+          } ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200' : ''}`}
         />
 
         <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center gap-1">
@@ -209,7 +214,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
           )}
           <ChevronDown
             className={`w-4 h-4 text-slate-400 transition-transform duration-200 pointer-events-none ${
-              isOpen ? 'rotate-180 text-blue-600' : ''
+              isOpen ? 'rotate-180 text-slate-700' : ''
             }`}
           />
         </div>
@@ -220,7 +225,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
       )}
 
       {error && (
-        <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+        <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
           <span>&bull;</span> {error}
         </p>
       )}
@@ -229,7 +234,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-40 mt-1 w-full max-h-60 overflow-auto bg-white border border-slate-200 rounded-lg shadow-xl py-1 text-sm text-slate-800"
+          className="absolute z-40 mt-1 w-full max-h-60 overflow-auto bg-white border border-slate-200 rounded-lg shadow-lg py-1 text-sm text-slate-800"
         >
           {filteredOptions.length === 0 ? (
             <li className="px-4 py-3 text-xs text-slate-500 text-center font-medium">
@@ -257,9 +262,9 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
                   onMouseEnter={() => setHighlightedIndex(idx)}
                   className={`px-3.5 py-2.5 cursor-pointer flex items-center justify-between transition-colors ${
                     isHighlighted
-                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                      ? 'bg-slate-100 text-slate-900 font-semibold'
                       : 'hover:bg-slate-50'
-                  } ${isSelected ? 'bg-blue-50/70 text-blue-900 font-bold' : ''}`}
+                  } ${isSelected ? 'bg-slate-100 text-slate-900 font-bold' : ''}`}
                 >
                   <div className="flex flex-col">
                     <span className="text-xs uppercase font-medium tracking-tight">
@@ -271,7 +276,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
                       </span>
                     )}
                   </div>
-                  {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
+                  {isSelected && <Check className="w-4 h-4 text-slate-800 shrink-0" />}
                 </li>
               );
             })

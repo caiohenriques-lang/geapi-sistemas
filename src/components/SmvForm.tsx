@@ -10,8 +10,6 @@ import {
   AlertCircle,
   Eye,
   FileDown,
-  FileSpreadsheet,
-  Layers,
   HelpCircle,
   RotateCcw,
 } from 'lucide-react';
@@ -37,7 +35,6 @@ import {
   padCentralNumber,
 } from '../lib/smvRules';
 import { generatePdf } from '../lib/generatePdf';
-import { generateExcel } from '../lib/generateExcel';
 import { AutocompleteSelect, AutocompleteOption } from './AutocompleteSelect';
 import { PhotoUploader } from './PhotoUploader';
 import { PdfPreviewModal } from './PdfPreviewModal';
@@ -45,7 +42,7 @@ import { PdfPreviewModal } from './PdfPreviewModal';
 export const SmvForm: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
-  // Initial empty form state
+  // Initial empty form state - completely empty / clean
   const getInitialFormData = (): SmvFormData => ({
     tipoSmv: '',
     numeroCentral: '',
@@ -204,43 +201,33 @@ export const SmvForm: React.FC = () => {
     }
   };
 
-  const handleDirectDownloadExcel = async () => {
-    setHasAttemptedSubmit(true);
-    ensurePaddedNumber();
-    const result = validateForm(formData);
-    if (result.isValid) {
-      const res = await generateExcel({ formData });
-      setActionSuccessMsg(`Planilha "${res.fileName}" baixada com sucesso!`);
-      setTimeout(() => setActionSuccessMsg(null), 4000);
-    } else {
-      scrollToFirstError(result.errors);
-    }
-  };
-
-  const handleDirectDownloadBoth = async () => {
-    setHasAttemptedSubmit(true);
-    ensurePaddedNumber();
-    const result = validateForm(formData);
-    if (result.isValid) {
-      const pdfRes = await generatePdf({ formData });
-      const excelRes = await generateExcel({ formData });
-      setActionSuccessMsg(`Documentos "${pdfRes.fileName}" e "${excelRes.fileName}" baixados com sucesso!`);
-      setTimeout(() => setActionSuccessMsg(null), 4000);
-    } else {
-      scrollToFirstError(result.errors);
-    }
-  };
-
   const handleResetForm = () => {
     if (
       window.confirm(
-        'Tem certeza de que deseja limpar todos os dados preenchidos e iniciar uma nova SMV?'
+        'Tem certeza de que deseja limpar todos os campos e zerar o formulário?'
       )
     ) {
+      // Revoke all created photo object URLs to prevent memory leak
+      formData.fotos.forEach((f) => {
+        if (f.objectUrl) URL.revokeObjectURL(f.objectUrl);
+      });
+
+      // Clear HTML file input element if present
+      const fileInput = document.getElementById('photo-file-input') as HTMLInputElement | null;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
+      // Reset all states to initial zero state
       setFormData(getInitialFormData());
       setHasAttemptedSubmit(false);
       setResponsavelTecnicoManual(false);
       setActionSuccessMsg(null);
+      setValidation({ isValid: false, errors: {} });
+      setIsPreviewOpen(false);
+
+      // Scroll smoothly to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -270,39 +257,48 @@ export const SmvForm: React.FC = () => {
     return hasAttemptedSubmit ? validation.errors[field] : undefined;
   };
 
+  // Helper classes for field borders: reddish when empty/pending, turning normal upon filling
+  const getFieldBorderClasses = (field: keyof ValidationErrors, isEmpty: boolean) => {
+    const err = getFieldError(field);
+    if (err) {
+      return 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20';
+    }
+    if (isEmpty) {
+      return 'border-rose-300 bg-rose-50/15 focus:border-slate-600 focus:ring-2 focus:ring-slate-100';
+    }
+    return 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100';
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto py-6 px-4 sm:px-6">
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        {/* Page Title & Header Banner */}
-        <div className="bg-slate-900 text-white p-6 sm:p-8 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <span className="text-xs font-mono font-bold text-blue-400 bg-blue-950/80 px-2.5 py-1 rounded border border-blue-800/60 uppercase">
-              Formulário Oficial
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-2">
-              Novo SMV
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Page Title & Header Banner - Minimalist, light/neutral styling, NO logo here */}
+        <div className="bg-slate-50 border-b border-slate-200 p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Confecção de SMV
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1">
-              Preencha os campos abaixo para gerar a Solicitação de Manutenção de Vias.
+            <p className="text-xs sm:text-sm text-slate-500 font-normal">
+              Formulário de preenchimento de Solicitação de Manutenção de Vias
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
             <button
               type="button"
               onClick={handleResetForm}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Limpar todos os campos"
+              className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              title="Limpar todos os campos e zerar o formulário"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-              LIMPAR CAMPOS
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              Limpar Campos
             </button>
 
-            <div className="bg-slate-800/90 border border-slate-700 p-3.5 rounded-xl text-right">
-              <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                NÚMERO SMV
+            <div className="bg-white border border-slate-200 px-3.5 py-1.5 rounded-lg text-right shadow-2xs">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Número SMV
               </span>
-              <span className="text-lg font-mono font-black text-blue-300">
+              <span className="text-sm sm:text-base font-mono font-bold text-slate-800">
                 {fullSmvNumberFormatted}
               </span>
             </div>
@@ -314,22 +310,24 @@ export const SmvForm: React.FC = () => {
           {/* Section 1: Identificação da SMV */}
           <section className="space-y-6">
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-              <FileText className="w-5 h-5 text-blue-700" />
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
-                1. IDENTIFICAÇÃO DO DOCUMENTO E TIPO
+              <FileText className="w-4 h-4 text-slate-700" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Identificação do Documento e Tipo
               </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 1. TIPO DE SMV */}
+              {/* TIPO DE SMV */}
               <div id="field-tipoSmv">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  1. TIPO DE SMV <span className="text-red-500 font-bold">*</span>
+                  Tipo de SMV <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <div
                   className={`grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-1 rounded-xl transition-all ${
                     getFieldError('tipoSmv')
-                      ? 'border-2 border-red-500 bg-red-50/30'
+                      ? 'border border-rose-400 bg-rose-50/30'
+                      : !formData.tipoSmv
+                      ? 'border border-rose-200 bg-rose-50/15'
                       : ''
                   }`}
                 >
@@ -344,12 +342,12 @@ export const SmvForm: React.FC = () => {
                         }
                         className={`p-3 rounded-lg border text-xs font-bold transition-all text-center uppercase flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                           isSelected
-                            ? 'bg-blue-700 text-white border-blue-700 shadow-sm ring-2 ring-blue-200'
-                            : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                            : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
                         }`}
                       >
                         <span>{tipo}</span>
-                        <span className="text-[10px] opacity-80 font-mono">
+                        <span className={`text-[10px] font-mono ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
                           Prefixo: {getPrefixoByTipoSMV(tipo)}
                         </span>
                       </button>
@@ -357,21 +355,21 @@ export const SmvForm: React.FC = () => {
                   })}
                 </div>
                 {getFieldError('tipoSmv') && (
-                  <p className="mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1">
+                  <p className="mt-1.5 text-xs font-semibold text-rose-600 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('tipoSmv')}
                   </p>
                 )}
               </div>
 
-              {/* 2. NÚMERO DA SMV */}
+              {/* NÚMERO DA SMV */}
               <div>
                 <label
                   htmlFor="numeroCentral"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2"
                 >
-                  2. NÚMERO DA SMV <span className="text-red-500 font-bold">*</span>
+                  Número da SMV <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <div className="flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-300">
+                <div className="flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
                   <span className="bg-slate-200 font-mono font-bold text-slate-800 text-sm px-2.5 py-1.5 rounded border border-slate-300 select-none shrink-0">
                     {prefixo}-
                   </span>
@@ -390,10 +388,8 @@ export const SmvForm: React.FC = () => {
                     onBlur={ensurePaddedNumber}
                     placeholder="000053"
                     aria-invalid={!!getFieldError('numeroCentral')}
-                    className={`w-full py-1.5 px-3 bg-white font-mono text-base font-extrabold text-slate-900 border rounded shadow-xs focus:outline-none transition-all ${
-                      getFieldError('numeroCentral')
-                        ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-                        : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                    className={`w-full py-1.5 px-3 bg-white font-mono text-base font-extrabold text-slate-900 border rounded shadow-2xs focus:outline-none transition-all ${
+                      getFieldBorderClasses('numeroCentral', !formData.numeroCentral)
                     }`}
                   />
                   <span className="bg-slate-200 font-mono font-bold text-slate-800 text-sm px-2.5 py-1.5 rounded border border-slate-300 select-none shrink-0">
@@ -401,10 +397,10 @@ export const SmvForm: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Preencha exatamente 6 dígitos numéricos centrais (ex: 000053).
+                  Preencha os 6 dígitos numéricos centrais (ex: 000053).
                 </p>
                 {getFieldError('numeroCentral') && (
-                  <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+                  <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('numeroCentral')}
                   </p>
                 )}
@@ -415,30 +411,31 @@ export const SmvForm: React.FC = () => {
           {/* Section 2: Pessoas e Estrutura Institucional */}
           <section className="space-y-6">
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-              <UserCheck className="w-5 h-5 text-blue-700" />
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
-                2. SOLICITANTE, ÁREA E RESPONSÁVEIS
+              <UserCheck className="w-4 h-4 text-slate-700" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Solicitante, Área e Responsáveis
               </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 3. SOLICITANTE */}
+              {/* SOLICITANTE */}
               <AutocompleteSelect
                 id="solicitante"
-                label="3. SOLICITANTE"
+                label="Solicitante"
                 options={servidorOptions}
                 value={formData.solicitante?.id || ''}
                 onChange={handleSolicitanteChange}
                 placeholder="DIGITE PARA BUSCAR SOLICITANTE..."
                 required
                 error={getFieldError('solicitante')}
+                isInitialEmptyPending={!formData.solicitante}
                 helpText="Ao selecionar, preenche o Responsável Técnico caso não tenha sido alterado manualmente."
               />
 
-              {/* 4. ÁREA */}
+              {/* ÁREA */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  4. ÁREA
+                  Área
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -449,7 +446,7 @@ export const SmvForm: React.FC = () => {
                     value={formData.area}
                     disabled
                     readOnly
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-lg border border-slate-300 cursor-not-allowed uppercase"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-lg border border-slate-200 cursor-not-allowed uppercase"
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
@@ -457,23 +454,24 @@ export const SmvForm: React.FC = () => {
                 </p>
               </div>
 
-              {/* 12. RESPONSÁVEL TÉCNICO */}
+              {/* RESPONSÁVEL TÉCNICO */}
               <AutocompleteSelect
                 id="responsavelTecnico"
-                label="12. RESPONSÁVEL TÉCNICO"
+                label="Responsável Técnico"
                 options={servidorOptions}
                 value={formData.responsavelTecnico?.id || ''}
                 onChange={handleResponsavelTecnicoChange}
                 placeholder="DIGITE PARA BUSCAR RESPONSÁVEL TÉCNICO..."
                 required
                 error={getFieldError('responsavelTecnico')}
-                helpText="Pode ser alterado independentemente para outra pessoa da lista."
+                isInitialEmptyPending={!formData.responsavelTecnico}
+                helpText="Pode ser alterado independentemente para outro servidor da lista."
               />
 
-              {/* 13. GERENTE DA ÁREA */}
+              {/* GERENTE DA ÁREA */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  13. GERENTE DA ÁREA
+                  Gerente da Área
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -484,11 +482,11 @@ export const SmvForm: React.FC = () => {
                     value={formData.gerenteArea}
                     disabled
                     readOnly
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-lg border border-slate-300 cursor-not-allowed uppercase"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-lg border border-slate-200 cursor-not-allowed uppercase"
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Valor fixo não editável.
+                  Valor fixo institucional.
                 </p>
               </div>
             </div>
@@ -497,17 +495,17 @@ export const SmvForm: React.FC = () => {
           {/* Section 3: Dados do Local e Serviço */}
           <section className="space-y-6">
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-              <MapPin className="w-5 h-5 text-blue-700" />
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
-                3. LOCALIZAÇÃO E DETALHAMENTO DO SERVIÇO
+              <MapPin className="w-4 h-4 text-slate-700" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Localização e Detalhamento do Serviço
               </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 5. ADMINISTRAÇÃO REGIONAL */}
+              {/* ADMINISTRAÇÃO REGIONAL */}
               <AutocompleteSelect
                 id="administracaoRegional"
-                label="5. ADMINISTRAÇÃO REGIONAL"
+                label="Administração Regional"
                 options={regionalOptions}
                 value={formData.administracaoRegional}
                 onChange={(val) =>
@@ -519,15 +517,16 @@ export const SmvForm: React.FC = () => {
                 placeholder="SELECIONE OU DIGITE A REGIONAL..."
                 required
                 error={getFieldError('administracaoRegional')}
+                isInitialEmptyPending={!formData.administracaoRegional}
               />
 
-              {/* 10. TIPO DE PAVIMENTO */}
+              {/* TIPO DE PAVIMENTO */}
               <div>
                 <label
                   htmlFor="tipoPavimento"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
                 >
-                  10. TIPO DE PAVIMENTO <span className="text-red-500 font-bold">*</span>
+                  Tipo de Pavimento <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <select
                   id="tipoPavimento"
@@ -539,10 +538,8 @@ export const SmvForm: React.FC = () => {
                     }))
                   }
                   aria-invalid={!!getFieldError('tipoPavimento')}
-                  className={`w-full py-2.5 px-3 bg-white text-slate-900 font-bold text-sm rounded-lg border shadow-xs focus:outline-none transition-all uppercase ${
-                    getFieldError('tipoPavimento')
-                      ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-                      : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                  className={`w-full py-2.5 px-3 bg-white text-slate-900 font-semibold text-sm rounded-lg border shadow-2xs focus:outline-none transition-all uppercase ${
+                    getFieldBorderClasses('tipoPavimento', !formData.tipoPavimento)
                   }`}
                 >
                   <option value="">SELECIONE O PAVIMENTO...</option>
@@ -553,20 +550,20 @@ export const SmvForm: React.FC = () => {
                   ))}
                 </select>
                 {getFieldError('tipoPavimento') && (
-                  <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+                  <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('tipoPavimento')}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* 6. SERVIÇO REFERENTE */}
+            {/* SERVIÇO REFERENTE */}
             <div>
               <label
                 htmlFor="servicoReferente"
                 className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
               >
-                6. SERVIÇO REFERENTE <span className="text-red-500 font-bold">*</span>
+                Serviço Referente <span className="text-rose-500 font-bold">*</span>
               </label>
               <input
                 id="servicoReferente"
@@ -577,27 +574,25 @@ export const SmvForm: React.FC = () => {
                 }
                 placeholder="EX.: PODA? SINALIZAÇÃO HORIZONTAL? SINALIZAÇÃO VERTICAL?"
                 aria-invalid={!!getFieldError('servicoReferente')}
-                className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
-                  getFieldError('servicoReferente')
-                    ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-                    : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
+                  getFieldBorderClasses('servicoReferente', !formData.servicoReferente)
                 }`}
               />
               {getFieldError('servicoReferente') && (
-                <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+                <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('servicoReferente')}
                 </p>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 7. LOGRADOURO */}
+              {/* LOGRADOURO */}
               <div>
                 <label
                   htmlFor="logradouro"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
                 >
-                  7. LOGRADOURO <span className="text-red-500 font-bold">*</span>
+                  Logradouro <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   id="logradouro"
@@ -608,26 +603,24 @@ export const SmvForm: React.FC = () => {
                   }
                   placeholder="EX.: AV. AMAZONAS - ESQ. R. CURITIBA"
                   aria-invalid={!!getFieldError('logradouro')}
-                  className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
-                    getFieldError('logradouro')
-                      ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-                      : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                  className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
+                    getFieldBorderClasses('logradouro', !formData.logradouro)
                   }`}
                 />
                 {getFieldError('logradouro') && (
-                  <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+                  <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('logradouro')}
                   </p>
                 )}
               </div>
 
-              {/* 8. BAIRRO */}
+              {/* BAIRRO */}
               <div>
                 <label
                   htmlFor="bairro"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
                 >
-                  8. BAIRRO <span className="text-red-500 font-bold">*</span>
+                  Bairro <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   id="bairro"
@@ -638,27 +631,25 @@ export const SmvForm: React.FC = () => {
                   }
                   placeholder="EX.: CENTRO"
                   aria-invalid={!!getFieldError('bairro')}
-                  className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
-                    getFieldError('bairro')
-                      ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-                      : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                  className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
+                    getFieldBorderClasses('bairro', !formData.bairro)
                   }`}
                 />
                 {getFieldError('bairro') && (
-                  <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+                  <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('bairro')}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* 9. LOCALIZAÇÃO */}
+            {/* LOCALIZAÇÃO */}
             <div>
               <label
                 htmlFor="localizacao"
                 className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
               >
-                9. LOCALIZAÇÃO <span className="text-red-500 font-bold">*</span>
+                Localização <span className="text-rose-500 font-bold">*</span>
               </label>
               <textarea
                 id="localizacao"
@@ -669,14 +660,12 @@ export const SmvForm: React.FC = () => {
                 }
                 placeholder="EX.: SENTIDO CENTRO/BAIRRO (E MAIORES ORIENTAÇÕES, SE HOUVER)"
                 aria-invalid={!!getFieldError('localizacao')}
-                className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
-                  getFieldError('localizacao')
-                    ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-                    : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                className={`w-full py-2.5 px-3.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs focus:outline-none transition-all uppercase placeholder:normal-case placeholder:text-slate-400 ${
+                  getFieldBorderClasses('localizacao', !formData.localizacao)
                 }`}
               />
               {getFieldError('localizacao') && (
-                <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+                <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('localizacao')}
                 </p>
               )}
@@ -689,26 +678,27 @@ export const SmvForm: React.FC = () => {
               photos={formData.fotos}
               onChange={(fotos) => setFormData((prev) => ({ ...prev, fotos }))}
               error={getFieldError('fotos')}
+              isInitialEmptyPending={formData.fotos.length === 0}
             />
           </section>
 
           {/* Section 5: Data e Encaminhamento */}
           <section className="space-y-6">
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-              <Calendar className="w-5 h-5 text-blue-700" />
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
-                4. DATA DE CONFECÇÃO E ENCAMINHAMENTO
+              <Calendar className="w-4 h-4 text-slate-700" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                Data de Confecção e Encaminhamento
               </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 14. DATA DE CONFECÇÃO */}
+              {/* DATA DE CONFECÇÃO */}
               <div>
                 <label
                   htmlFor="dataConfeccao"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
                 >
-                  14. DATA DE CONFECÇÃO <span className="text-red-500 font-bold">*</span>
+                  Data de Confecção <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -726,34 +716,32 @@ export const SmvForm: React.FC = () => {
                     }
                     placeholder="DD/MM/AAAA"
                     aria-invalid={!!getFieldError('dataConfeccao')}
-                    className={`w-full pl-9 pr-3.5 py-2.5 bg-white text-slate-900 font-bold text-sm rounded-lg border shadow-xs focus:outline-none transition-all ${
-                      getFieldError('dataConfeccao')
-                        ? 'border-red-500 ring-2 ring-red-100 bg-red-50/20'
-                        : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                    className={`w-full pl-9 pr-3.5 py-2.5 bg-white text-slate-900 font-semibold text-sm rounded-lg border shadow-2xs focus:outline-none transition-all ${
+                      getFieldBorderClasses('dataConfeccao', !formData.dataConfeccao)
                     }`}
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Formato DD/MM/AAAA. Essa data será mantida nos locais correspondentes do SMV.
+                  Formato DD/MM/AAAA.
                 </p>
                 {getFieldError('dataConfeccao') && (
-                  <p className="mt-1 text-xs font-semibold text-red-600 flex items-center gap-1">
+                  <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {getFieldError('dataConfeccao')}
                   </p>
                 )}
               </div>
 
-              {/* 15. ENCAMINHAMENTO / PARA */}
+              {/* ENCAMINHAMENTO / PARA */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  15. ENCAMINHAMENTO / PARA
+                  Encaminhamento / Para
                 </label>
                 <input
                   type="text"
                   value={formData.encaminhamento || 'SELECIONE O TIPO DE SMV'}
                   disabled
                   readOnly
-                  className="w-full py-2.5 px-3.5 bg-slate-100 text-slate-800 font-bold text-sm rounded-lg border border-slate-300 cursor-not-allowed uppercase"
+                  className="w-full py-2.5 px-3.5 bg-slate-100 text-slate-800 font-bold text-sm rounded-lg border border-slate-200 cursor-not-allowed uppercase"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
                   Preenchido automaticamente de acordo com o Tipo de SMV.
@@ -764,12 +752,12 @@ export const SmvForm: React.FC = () => {
 
           {/* Validation Summary Warning Box when errors exist */}
           {hasAttemptedSubmit && !validation.isValid && (
-            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl space-y-2 text-xs text-red-800 animate-fadeIn">
-              <div className="flex items-center gap-2 font-bold text-sm text-red-900">
-                <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
-                <span>ATENÇÃO: Existem campos obrigatórios pendentes ou inválidos</span>
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-2 text-xs text-rose-800 animate-fadeIn">
+              <div className="flex items-center gap-2 font-bold text-sm text-rose-900">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>Atenção: Existem campos obrigatórios pendentes ou inválidos</span>
               </div>
-              <ul className="list-disc list-inside space-y-1 font-medium pl-1 text-red-700">
+              <ul className="list-disc list-inside space-y-1 font-medium pl-1 text-rose-700">
                 {Object.values(validation.errors).map((err, idx) => (
                   <li key={idx}>{err}</li>
                 ))}
@@ -779,8 +767,8 @@ export const SmvForm: React.FC = () => {
 
           {/* Action Success Message Banner */}
           {actionSuccessMsg && (
-            <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-800 animate-fadeIn">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-semibold text-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{actionSuccessMsg}</span>
             </div>
           )}
@@ -788,55 +776,32 @@ export const SmvForm: React.FC = () => {
           {/* Form Bottom Action Area */}
           <div className="pt-6 border-t border-slate-200 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              {/* Primary Action Button: VISUALIZAR PDF (NOT disabled, triggers scroll and highlight on invalid) */}
-              <button
-                id="btn-visualizar-pdf"
-                type="button"
-                onClick={handleOpenPreview}
-                className="px-8 py-3.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-bold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.99]"
-              >
-                <Eye className="w-5 h-5" />
-                VISUALIZAR PDF
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Primary Action Button: VISUALIZAR PDF */}
+                <button
+                  id="btn-visualizar-pdf"
+                  type="button"
+                  onClick={handleOpenPreview}
+                  className="px-7 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+                >
+                  <Eye className="w-4 h-4" />
+                  Visualizar PDF
+                </button>
 
-              <div className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                <HelpCircle className="w-4 h-4 text-slate-400 shrink-0" />
-                <span>Clique em "VISUALIZAR PDF" para conferir a prévia do documento oficial.</span>
-              </div>
-            </div>
-
-            {/* Direct Downloads Actions Bar */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-              <span className="block text-[11px] font-bold uppercase text-slate-600 tracking-wider">
-                Opções de Download Direto
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
+                {/* Direct Download PDF Button */}
                 <button
                   type="button"
                   onClick={handleDirectDownloadPdf}
-                  className="px-3.5 py-2 bg-blue-800 hover:bg-blue-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-blue-900 cursor-pointer shadow-xs transition-all active:scale-95"
+                  className="px-6 py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl font-bold text-xs uppercase tracking-wider shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
                 >
-                  <FileDown className="w-3.5 h-3.5" />
-                  BAIXAR PDF
+                  <FileDown className="w-4 h-4 text-slate-600" />
+                  Baixar PDF
                 </button>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={handleDirectDownloadExcel}
-                  className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-emerald-900 cursor-pointer shadow-xs transition-all active:scale-95"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  BAIXAR EXCEL EDITÁVEL
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleDirectDownloadBoth}
-                  className="px-3.5 py-2 bg-indigo-800 hover:bg-indigo-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-indigo-900 cursor-pointer shadow-xs transition-all active:scale-95"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  BAIXAR OS DOIS
-                </button>
+              <div className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                <HelpCircle className="w-4 h-4 text-slate-400 shrink-0" />
+                <span>Clique em "Visualizar PDF" para conferir a prévia do documento.</span>
               </div>
             </div>
           </div>
@@ -852,3 +817,4 @@ export const SmvForm: React.FC = () => {
     </div>
   );
 };
+

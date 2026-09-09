@@ -1,17 +1,19 @@
 import React, { useRef } from 'react';
-import { Upload, Image as ImageIcon, Trash2, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, Trash2, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { SmvPhotoItem } from '../types/smv';
 
 interface PhotoUploaderProps {
   photos: SmvPhotoItem[];
   onChange: (photos: SmvPhotoItem[]) => void;
   error?: string;
+  isInitialEmptyPending?: boolean;
 }
 
 export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   photos,
   onChange,
   error,
+  isInitialEmptyPending = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceIndexRef = useRef<number | null>(null);
@@ -20,7 +22,6 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     if (!filesList || filesList.length === 0) return;
 
     const newFiles = Array.from(filesList).filter((f) => f.type.startsWith('image/'));
-
     if (newFiles.length === 0) return;
 
     if (replaceIndexRef.current !== null) {
@@ -38,14 +39,15 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         id: `photo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         file: fileToReplace,
         objectUrl: URL.createObjectURL(fileToReplace),
-        name: fileToReplace.name.toUpperCase(),
+        name: '', // Do not store/display filename
+        observacao: updated[targetIdx]?.observacao || '',
       };
 
       onChange(updated);
       replaceIndexRef.current = null;
     } else {
-      // Adding new photos (max 2)
-      const slotsAvailable = 2 - photos.length;
+      // Adding new photos (max 4)
+      const slotsAvailable = 4 - photos.length;
       if (slotsAvailable <= 0) return;
 
       const filesToAdd = newFiles.slice(0, slotsAvailable);
@@ -53,7 +55,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         id: `photo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         file,
         objectUrl: URL.createObjectURL(file),
-        name: file.name.toUpperCase(),
+        name: '',
+        observacao: '',
       }));
 
       onChange([...photos, ...newPhotoItems]);
@@ -92,7 +95,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (photos.length >= 2) return;
+    if (photos.length >= 4) return;
     if (e.dataTransfer.files) {
       handleFilesSelected(e.dataTransfer.files);
     }
@@ -107,32 +110,26 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     onChange(updated);
   };
 
-  const isMaxReached = photos.length >= 2;
+  const isMaxReached = photos.length >= 4;
   const isMinMet = photos.length >= 1;
+
+  const showHighlight = (isInitialEmptyPending && photos.length === 0) || !!error;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-          11. OBSERVAÇÕES / CROQUI - FOTOS <span className="text-red-500 font-bold">*</span>
+          Observações / Croqui - Fotografias <span className="text-rose-500 font-bold">*</span>
         </label>
         <span
           className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
             isMinMet
-              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-              : 'bg-amber-100 text-amber-800 border border-amber-300'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border border-rose-200'
           }`}
         >
-          {photos.length} de 2 foto(s)
+          {photos.length} de 4 foto(s) {isMinMet ? '(Mínimo atendido)' : '(Mínimo 1 obrigatória)'}
         </span>
-      </div>
-
-      {/* Warning Notice Box */}
-      <div className="bg-amber-50/80 border border-amber-200/80 rounded-lg p-3 text-xs text-amber-900 flex items-start gap-2.5">
-        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-        <p className="font-medium">
-          Adicione de 1 a 2 fotos. É obrigatória a inclusão de pelo menos uma imagem.
-        </p>
       </div>
 
       {/* Hidden File Input */}
@@ -140,94 +137,94 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        multiple={photos.length === 0}
+        multiple={photos.length < 4}
         onChange={(e) => handleFilesSelected(e.target.files)}
         className="hidden"
         id="photo-file-input"
       />
 
       {/* Upload Zone / Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
         {/* Render Selected Photos */}
         {photos.map((photo, index) => (
           <div
             key={photo.id}
-            className="group relative bg-slate-900 rounded-xl overflow-hidden border-2 border-slate-700 shadow-md flex flex-col justify-between"
+            className="group relative bg-white rounded-xl overflow-hidden border border-slate-200 shadow-xs flex flex-col justify-between"
           >
-            <div className="relative aspect-4/3 w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+            <div className="relative aspect-4/3 w-full bg-slate-100 flex items-center justify-center overflow-hidden border-b border-slate-100">
               <img
                 src={photo.objectUrl}
-                alt={`Fotografia ${index + 1}`}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                alt={`Foto ${index + 1}`}
+                className="w-full h-full object-cover transition-transform duration-200"
               />
-              <div className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-bold px-2 py-1 rounded border border-slate-700">
+              <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-xs text-slate-800 text-[11px] font-bold px-2.5 py-0.5 rounded shadow-xs border border-slate-200">
                 FOTO {index + 1}
               </div>
             </div>
 
             {/* Card Actions Footer */}
-            <div className="p-3 bg-slate-800 border-t border-slate-700 space-y-2">
+            <div className="p-3 bg-slate-50/80 border-t border-slate-100 space-y-2.5">
               <div className="flex items-center justify-end gap-2">
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleTriggerReplace(index)}
-                    className="px-2.5 py-1.5 bg-slate-700 hover:bg-blue-600 text-white rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                    title="Substituir foto"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    SUBSTITUIR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePhoto(index)}
-                    className="px-2.5 py-1.5 bg-red-900/80 hover:bg-red-600 text-white rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                    title="Remover foto"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    REMOVER
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTriggerReplace(index)}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Substituir foto"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                  Substituir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemovePhoto(index)}
+                  className="px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Remover foto"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  Remover
+                </button>
               </div>
 
               {/* Optional Photo Observation Text */}
-              <div className="pt-2 border-t border-slate-700/80">
-                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">
-                  Observação da Foto {index + 1} (opcional)
+              <div className="pt-2 border-t border-slate-200">
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                  Observação da foto (opcional)
                 </label>
                 <input
                   type="text"
                   value={photo.observacao || ''}
                   onChange={(e) => handleObservacaoChange(index, e.target.value)}
-                  placeholder="EX.: DETALHE DO PAVIMENTO DANO NO ASFALTO"
-                  className="w-full px-2.5 py-1.5 bg-slate-900 text-white placeholder:text-slate-500 font-mono text-xs rounded border border-slate-600 focus:border-blue-400 focus:outline-none uppercase"
+                  placeholder="EX.: DETALHE DO PAVIMENTO DANIFICADO"
+                  className="w-full px-3 py-1.5 bg-white text-slate-900 placeholder:text-slate-400 font-medium text-xs rounded border border-slate-200 focus:border-slate-500 focus:outline-none uppercase"
                 />
               </div>
             </div>
           </div>
         ))}
 
-        {/* Dropzone Box when less than 2 photos */}
+        {/* Dropzone Box when less than 4 photos */}
         {!isMaxReached && (
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onClick={handleTriggerAdd}
-            className={`border-2 border-dashed rounded-xl p-6 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-all min-h-[180px] ${
-              error && photos.length === 0
-                ? 'border-red-400 bg-red-50/40 hover:bg-red-50/70'
-                : 'border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/30'
+            className={`border-2 border-dashed rounded-xl p-6 text-center flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all min-h-[190px] ${
+              showHighlight
+                ? 'border-rose-300 bg-rose-50/20 hover:bg-rose-50/40'
+                : 'border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50'
             }`}
           >
-            <div className="p-3 bg-blue-100 text-blue-700 rounded-full">
-              <Upload className="w-6 h-6" />
+            <div className={`p-2.5 rounded-full ${showHighlight ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'}`}>
+              <Upload className="w-5 h-5" />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-800 uppercase">
-                {photos.length === 0 ? 'CLIQUE OU ARRASTE A 1ª FOTO AQUI' : 'CLIQUE OU ARRASTE A 2ª FOTO (OPCIONAL)'}
+                {photos.length === 0
+                  ? 'Clique ou arraste a 1ª foto aqui'
+                  : `Clique ou arraste para adicionar (${photos.length + 1}ª foto)`}
               </p>
               <p className="text-[11px] text-slate-500 mt-1">
-                Suporta imagens PNG, JPG, JPEG (Armazenamento temporário na memória)
+                Suporta PNG, JPG, JPEG &bull; Até 4 fotografias &bull; Memória temporária
               </p>
             </div>
           </div>
@@ -235,16 +232,17 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       </div>
 
       {error && (
-        <p className="text-xs font-semibold text-red-600 flex items-center gap-1">
+        <p className="text-xs font-semibold text-rose-600 flex items-center gap-1">
           <AlertCircle className="w-3.5 h-3.5" /> {error}
         </p>
       )}
 
-      {isMinMet && (
+      {isMinMet && !error && (
         <p className="text-xs text-emerald-700 font-medium flex items-center gap-1">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Requisito de fotografia atendido ({photos.length} de máximo 2 salvas temporariamente na memória do navegador).
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Fotografias prontas ({photos.length} de 4).
         </p>
       )}
     </div>
   );
 };
+

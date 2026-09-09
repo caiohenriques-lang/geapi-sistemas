@@ -1,5 +1,5 @@
 {
-  "name": "GEAPI-SMV",
+  "name": "GEAPI - Sistemas",
   "description": "Aplicação web para confecção de Solicitação de Manutenção de Vias (SMV) - GEAPI",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
