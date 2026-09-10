@@ -1,5 +1,3 @@
-@import "tailwindcss";
-
 :root {
   --geapi-charcoal: #454545;
   --geapi-charcoal-dark: #2F2F2F;
@@ -8,9 +6,4 @@
   --geapi-gray: #6B7280;
   --geapi-gray-light: #E5E7EB;
   --geapi-white: #FFFFFF;
-}
-
-/* Safe area inset support for mobile iPhone bottom navigation */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

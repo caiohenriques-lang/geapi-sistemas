@@ -249,11 +249,11 @@ export const SmvForm: React.FC = () => {
     formData.ano
   );
 
-  // Convert Servidores options for AutocompleteSelect
+  // Convert Servidores options for AutocompleteSelect (Single-line: MATRÍCULA - NOME)
   const servidorOptions: AutocompleteOption[] = SERVIDORES_LISTA.map((s) => ({
     value: s.id,
     label: s.formattedLabel,
-    sublabel: `Matrícula Institucional: ${s.matriculaBT}`,
+    extraSearchText: `${s.matricula} ${s.matriculaBT} ${s.nome}`,
   }));
 
   // Convert Administrações Regionais options for AutocompleteSelect
@@ -282,9 +282,9 @@ export const SmvForm: React.FC = () => {
 
   return (
     <div key={formKey} className="w-full max-w-5xl mx-auto py-6 px-4 sm:px-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
         {/* Page Title & Header Banner - Minimalist, light/neutral styling, NO logo here */}
-        <div className="bg-slate-50 border-b border-slate-200 p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-slate-50 border-b border-slate-200 rounded-t-2xl p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Confecção de SMV
@@ -351,16 +351,13 @@ export const SmvForm: React.FC = () => {
                         onClick={() =>
                           setFormData((prev) => ({ ...prev, tipoSmv: tipo }))
                         }
-                        className={`p-3 rounded-lg border text-xs font-bold transition-all text-center uppercase flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                        className={`p-3 rounded-lg border text-xs font-bold transition-all text-center uppercase flex items-center justify-center cursor-pointer min-h-[44px] ${
                           isSelected
                             ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
                             : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
                         }`}
                       >
                         <span>{tipo}</span>
-                        <span className={`text-[10px] font-mono ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                          Prefixo: {getPrefixoByTipoSMV(tipo)}
-                        </span>
                       </button>
                     );
                   })}
@@ -478,7 +475,7 @@ export const SmvForm: React.FC = () => {
                     type="text"
                     value={
                       formData.responsavelTecnico
-                        ? formData.responsavelTecnico.formattedLabel
+                        ? `${formData.responsavelTecnico.nome} - ${formData.responsavelTecnico.matriculaBT}`
                         : ''
                     }
                     placeholder="PREENCHIDO AUTOMATICAMENTE PELO SOLICITANTE..."

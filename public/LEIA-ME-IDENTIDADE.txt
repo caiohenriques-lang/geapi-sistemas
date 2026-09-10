@@ -1,0 +1,32 @@
+GEAPI - Sistemas | pacote de identidade visual
+
+Copie o conteúdo da pasta public/ para a pasta public/ do projeto.
+
+Arquivos principais:
+- /brand/logo_geapi_symbol.svg              símbolo vetorial
+- /brand/logo_geapi_symbol.png              símbolo raster transparente
+- /brand/logo_geapi_sistemas_horizontal.svg assinatura horizontal
+- /brand/logo_geapi_sistemas_horizontal.png assinatura horizontal raster
+- /favicon.svg
+- /favicon.ico
+- /favicon-16x16.png
+- /favicon-32x32.png
+- /apple-touch-icon.png
+- /icon-192.png
+- /icon-512.png
+- /maskable-icon-512.png
+- /manifest.json
+- /brand/brand-tokens.css
+
+Paleta:
+- Cinza principal: #454545
+- Cinza escuro: #2F2F2F
+- Amarelo: #F4B400
+- Preto de contorno: #171717
+- Cinza secundário: #6B7280
+- Cinza claro: #E5E7EB
+- Branco: #FFFFFF
+
+Observação:
+A marca GEAPI - Sistemas não substitui a logo institucional PBH/BHTRANS
+já existente no projeto.
