@@ -10,15 +10,23 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ onAccept }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const accepted = sessionStorage.getItem('geapi_smv_notice_accepted');
-    if (accepted !== 'true') {
+    // Check localStorage (permanent cache) or fallback to sessionStorage
+    const acceptedLocal = localStorage.getItem('geapi_smv_notice_accepted');
+    const acceptedSession = sessionStorage.getItem('geapi_smv_notice_accepted');
+    if (acceptedLocal !== 'true' && acceptedSession !== 'true') {
       setIsOpen(true);
     }
   }, []);
 
   const handleContinue = () => {
     if (!isChecked) return;
-    sessionStorage.setItem('geapi_smv_notice_accepted', 'true');
+    // Persist permanently in localStorage and current session
+    try {
+      localStorage.setItem('geapi_smv_notice_accepted', 'true');
+      sessionStorage.setItem('geapi_smv_notice_accepted', 'true');
+    } catch {
+      // Fallback in case storage is restricted
+    }
     setIsOpen(false);
     onAccept();
   };

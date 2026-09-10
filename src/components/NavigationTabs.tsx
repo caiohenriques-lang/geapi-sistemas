@@ -1,15 +1,24 @@
 import React from 'react';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, ShieldAlert } from 'lucide-react';
 
 export interface SystemModule {
   id: string;
   label: string;
   fullName?: string;
   description?: string;
+  externalUrl?: string;
   icon?: React.ComponentType<{ className?: string }>;
 }
 
 export const GEAPI_MODULES: SystemModule[] = [
+  {
+    id: 'sat',
+    label: 'SAT',
+    fullName: 'SAT - Sinistros e Acidentes de Trânsito',
+    description: 'Portal de Sinistros e Acidentes de Trânsito',
+    externalUrl: 'https://geapife-sinistros.vercel.app',
+    icon: ShieldAlert,
+  },
   {
     id: 'smv',
     label: 'SMV',
@@ -39,6 +48,21 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
           {GEAPI_MODULES.map((mod) => {
             const isActive = mod.id === activeModuleId;
             const Icon = mod.icon || FileSpreadsheet;
+
+            if (mod.externalUrl) {
+              return (
+                <a
+                  key={mod.id}
+                  href={mod.externalUrl}
+                  target="_self"
+                  className="relative px-4 py-2 rounded-lg text-xs sm:text-sm font-bold tracking-tight transition-all flex items-center gap-2 shrink-0 cursor-pointer bg-transparent text-[#6B7280] hover:text-[#2F2F2F] hover:bg-[#E5E7EB]/40 border border-transparent"
+                  title={mod.fullName || mod.label}
+                >
+                  <Icon className="w-4 h-4 text-[#6B7280]" />
+                  <span>{mod.label}</span>
+                </a>
+              );
+            }
 
             return (
               <button

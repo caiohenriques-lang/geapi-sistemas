@@ -25,6 +25,25 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           const isActive = mod.id === activeModuleId;
           const Icon = mod.icon || FileSpreadsheet;
 
+          if (mod.externalUrl) {
+            return (
+              <a
+                key={mod.id}
+                href={mod.externalUrl}
+                target="_self"
+                className="flex flex-col items-center justify-center w-full py-1 transition-colors cursor-pointer relative text-[#6B7280] hover:text-[#2F2F2F]"
+                title={mod.fullName || mod.label}
+              >
+                <div className="flex items-center justify-center w-8 h-8 rounded-full transition-all text-[#6B7280]">
+                  <Icon className="w-4 h-4 text-[#6B7280]" />
+                </div>
+                <span className="text-[11px] font-bold tracking-tight mt-0.5 text-[#6B7280]">
+                  {mod.label}
+                </span>
+              </a>
+            );
+          }
+
           return (
             <button
               key={mod.id}
