@@ -375,7 +375,19 @@ export const SmvForm: React.FC = () => {
                   htmlFor="numeroCentral"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2"
                 >
-                  Número da SMV <span className="text-rose-500 font-bold">*</span>
+                  <span className="inline-block">Número da SMV <span className="text-rose-500 font-bold">*</span></span>{' '}
+                  <span className="inline-block text-[11px] font-normal text-slate-500 lowercase tracking-normal normal-case ml-1">
+                    (
+                    <a
+                      href="https://docs.google.com/spreadsheets/d/1tPuvdymM01O0UHdaVpP8F41kpT-fJ0dCpolffYozrSY/edit?gid=208166308#gid=208166308"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="cursor-pointer text-slate-600 hover:text-slate-800 hover:underline transition-colors font-medium"
+                    >
+                      Controle de Correspondências
+                    </a>
+                    )
+                  </span>
                 </label>
                 <div className="flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
                   <span className="bg-slate-200 font-mono font-bold text-slate-800 text-sm px-2.5 py-1.5 rounded border border-slate-300 select-none shrink-0">
