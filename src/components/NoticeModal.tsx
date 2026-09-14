@@ -10,19 +10,15 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ onAccept }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Check localStorage (permanent cache) or fallback to sessionStorage
-    const acceptedLocal = localStorage.getItem('geapi_smv_notice_accepted');
     const acceptedSession = sessionStorage.getItem('geapi_smv_notice_accepted');
-    if (acceptedLocal !== 'true' && acceptedSession !== 'true') {
+    if (acceptedSession !== 'true') {
       setIsOpen(true);
     }
   }, []);
 
   const handleContinue = () => {
     if (!isChecked) return;
-    // Persist permanently in localStorage and current session
     try {
-      localStorage.setItem('geapi_smv_notice_accepted', 'true');
       sessionStorage.setItem('geapi_smv_notice_accepted', 'true');
     } catch {
       // Fallback in case storage is restricted
@@ -61,7 +57,7 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ onAccept }) => {
           <p>
             Este sistema tem como finalidade exclusiva facilitar a confecção da Solicitação de Manutenção de Vias (SMV).
           </p>
-          <p>
+          <p className="font-semibold text-slate-800">
             Os dados informados não são armazenados de forma permanente. As imagens inseridas são utilizadas temporariamente apenas para a geração dos documentos e são descartadas após o encerramento da sessão.
           </p>
           <p className="font-semibold text-slate-800 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">

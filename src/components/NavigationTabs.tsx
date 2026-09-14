@@ -12,19 +12,19 @@ export interface SystemModule {
 
 export const GEAPI_MODULES: SystemModule[] = [
   {
+    id: 'smv',
+    label: 'SMV',
+    fullName: 'Solicitação de Manutenção de Vias',
+    description: 'Emissão e confecção de formulários de manutenção de vias',
+    icon: FileSpreadsheet,
+  },
+  {
     id: 'sat',
     label: 'SAT',
     fullName: 'SAT - Sinistros e Acidentes de Trânsito',
     description: 'Portal de Sinistros e Acidentes de Trânsito',
     externalUrl: 'https://geapife-sinistros.vercel.app',
     icon: ShieldAlert,
-  },
-  {
-    id: 'smv',
-    label: 'SMV',
-    fullName: 'Solicitação de Manutenção de Vias',
-    description: 'Emissão e confecção de formulários de manutenção de vias',
-    icon: FileSpreadsheet,
   },
 ];
 
