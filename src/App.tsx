@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { NavigationTabs } from './components/NavigationTabs';
 import { BottomNavigation } from './components/BottomNavigation';
-import { NoticeModal } from './components/NoticeModal';
 import { SmvForm } from './components/SmvForm';
 
 export default function App() {
@@ -10,9 +9,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-[#2F2F2F] font-sans flex flex-col antialiased">
-      {/* Mandatory initial modal session warning */}
-      <NoticeModal onAccept={() => {}} />
-
       {/* Institutional Top Header (Auto-hides on mobile scroll down, shows on scroll up) */}
       <Header />
 

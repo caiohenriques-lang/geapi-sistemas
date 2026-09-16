@@ -21,7 +21,7 @@ export const GEAPI_MODULES: SystemModule[] = [
   {
     id: 'sat',
     label: 'SAT',
-    fullName: 'SAT - Sinistros e Acidentes de Trânsito',
+    fullName: 'Sistema de Análise Técnica',
     description: 'Portal de Sinistros e Acidentes de Trânsito',
     externalUrl: 'https://geapife-sinistros.vercel.app',
     icon: ShieldAlert,

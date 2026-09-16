@@ -285,12 +285,15 @@ export const SmvForm: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
         {/* Page Title & Header Banner - Minimalist, light/neutral styling, NO logo here */}
         <div className="bg-slate-50 border-b border-slate-200 rounded-t-2xl p-6 sm:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5 max-w-2xl">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Confecção de SMV
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 font-normal">
               Formulário de preenchimento de Solicitação de Manutenção de Vias
+            </p>
+            <p className="text-xs text-red-600 font-normal leading-relaxed">
+              As fotografias e os dados informados são utilizados apenas durante a sessão para geração do documento e não são armazenados permanentemente.
             </p>
           </div>
 
@@ -382,7 +385,7 @@ export const SmvForm: React.FC = () => {
                       href="https://docs.google.com/spreadsheets/d/1tPuvdymM01O0UHdaVpP8F41kpT-fJ0dCpolffYozrSY/edit?gid=208166308#gid=208166308"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="cursor-pointer text-slate-600 hover:text-slate-800 hover:underline transition-colors font-medium"
+                      className="cursor-pointer text-blue-600 hover:text-blue-800 underline font-medium transition-colors"
                     >
                       Controle de Correspondências
                     </a>
