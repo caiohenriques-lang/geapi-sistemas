@@ -19,6 +19,13 @@ export interface AnnotationShape {
   endY: number;   // 0..1
 }
 
+export interface CropArea {
+  x: number;      // 0..1 relative to original image
+  y: number;      // 0..1
+  width: number;  // 0..1
+  height: number; // 0..1
+}
+
 export interface SmvPhotoItem {
   id: string;
   file: File;
@@ -26,6 +33,8 @@ export interface SmvPhotoItem {
   name: string;
   observacao?: string;
   annotations?: AnnotationShape[];
+  crop?: CropArea;
+  croppedObjectUrl?: string;
   annotatedObjectUrl?: string;
 }
 

@@ -214,6 +214,13 @@ export const SmvForm: React.FC = () => {
           console.warn('Error revoking object URL:', e);
         }
       }
+      if (f.croppedObjectUrl) {
+        try {
+          URL.revokeObjectURL(f.croppedObjectUrl);
+        } catch (e) {
+          console.warn('Error revoking cropped object URL:', e);
+        }
+      }
       if (f.annotatedObjectUrl) {
         try {
           URL.revokeObjectURL(f.annotatedObjectUrl);

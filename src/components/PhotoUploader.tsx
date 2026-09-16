@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Trash2, RefreshCw, AlertCircle, CheckCircle2, Sparkles, Edit3 } from 'lucide-react';
-import { SmvPhotoItem, AnnotationShape } from '../types/smv';
+import { Upload, Trash2, RefreshCw, AlertCircle, CheckCircle2, Sparkles, Edit3, Crop } from 'lucide-react';
+import { SmvPhotoItem, AnnotationShape, CropArea } from '../types/smv';
 import { PhotoAnnotatorModal } from './PhotoAnnotatorModal';
 
 interface PhotoUploaderProps {
@@ -34,7 +34,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       // Revoke old object URLs
       if (photos[targetIdx]) {
         if (photos[targetIdx].objectUrl) URL.revokeObjectURL(photos[targetIdx].objectUrl);
-        if (photos[targetIdx].annotatedObjectUrl) URL.revokeObjectURL(photos[targetIdx].annotatedObjectUrl);
+        if (photos[targetIdx].croppedObjectUrl) URL.revokeObjectURL(photos[targetIdx].croppedObjectUrl!);
+        if (photos[targetIdx].annotatedObjectUrl) URL.revokeObjectURL(photos[targetIdx].annotatedObjectUrl!);
       }
 
       const updated = [...photos];
@@ -45,6 +46,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         name: '', // Do not store/display filename
         observacao: updated[targetIdx]?.observacao || '',
         annotations: [],
+        crop: undefined,
+        croppedObjectUrl: undefined,
         annotatedObjectUrl: undefined,
       };
 
@@ -78,6 +81,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     const photoToRemove = photos[index];
     if (photoToRemove) {
       if (photoToRemove.objectUrl) URL.revokeObjectURL(photoToRemove.objectUrl);
+      if (photoToRemove.croppedObjectUrl) URL.revokeObjectURL(photoToRemove.croppedObjectUrl);
       if (photoToRemove.annotatedObjectUrl) URL.revokeObjectURL(photoToRemove.annotatedObjectUrl);
     }
     const updated = photos.filter((_, idx) => idx !== index);
@@ -87,13 +91,18 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   const handleSaveAnnotations = (
     photoIdx: number,
     annotations: AnnotationShape[],
-    annotatedObjectUrl?: string
+    crop?: CropArea,
+    annotatedObjectUrl?: string,
+    croppedObjectUrl?: string
   ) => {
     const updated = [...photos];
     const targetPhoto = updated[photoIdx];
     if (!targetPhoto) return;
 
-    // Revoke old annotated object URL if replaced
+    // Revoke old object URLs if replaced
+    if (targetPhoto.croppedObjectUrl && targetPhoto.croppedObjectUrl !== croppedObjectUrl) {
+      URL.revokeObjectURL(targetPhoto.croppedObjectUrl);
+    }
     if (targetPhoto.annotatedObjectUrl && targetPhoto.annotatedObjectUrl !== annotatedObjectUrl) {
       URL.revokeObjectURL(targetPhoto.annotatedObjectUrl);
     }
@@ -101,6 +110,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     updated[photoIdx] = {
       ...targetPhoto,
       annotations,
+      crop,
+      croppedObjectUrl,
       annotatedObjectUrl,
     };
 
@@ -178,7 +189,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         {/* Render Selected Photos */}
         {photos.map((photo, index) => {
           const isMarked = photo.annotations && photo.annotations.length > 0;
-          const displayUrl = photo.annotatedObjectUrl || photo.objectUrl;
+          const isCropped = !!photo.crop;
+          const displayUrl = photo.annotatedObjectUrl || photo.croppedObjectUrl || photo.objectUrl;
 
           return (
             <div
@@ -195,12 +207,20 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                   FOTO {index + 1}
                 </div>
 
-                {isMarked && (
-                  <div className="absolute top-2 right-2 bg-rose-600/95 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs flex items-center gap-1 border border-rose-700">
-                    <Sparkles className="w-3 h-3" />
-                    MARCADA ({photo.annotations?.length})
-                  </div>
-                )}
+                <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                  {isCropped && (
+                    <div className="bg-indigo-600/95 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs flex items-center gap-1 border border-indigo-700">
+                      <Crop className="w-3 h-3" />
+                      RECORTADA
+                    </div>
+                  )}
+                  {isMarked && (
+                    <div className="bg-rose-600/95 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs flex items-center gap-1 border border-rose-700">
+                      <Sparkles className="w-3 h-3" />
+                      MARCADA ({photo.annotations?.length})
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Card Actions Footer */}
@@ -210,14 +230,14 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                     type="button"
                     onClick={() => setAnnotatingIndex(index)}
                     className={`px-2.5 py-1.5 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer border shadow-2xs ${
-                      isMarked
+                      isMarked || isCropped
                         ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
                         : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
                     }`}
-                    title="Destacar elementos ou pontos da imagem com retângulos ou setas vermelhas"
+                    title="Editar fotografia, aplicar recorte ou adicionar marcações"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-rose-600" />
-                    {isMarked ? 'Editar Marcação' : 'Marcar Foto'}
+                    {isMarked || isCropped ? 'Editar Foto / Marcação' : 'Editar Foto'}
                   </button>
 
                   <div className="flex items-center gap-1.5">

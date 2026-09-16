@@ -16,7 +16,7 @@ export interface GeneratePdfOptions {
 async function getCleanImageData(
   photo: SmvPhotoItem
 ): Promise<{ bytes: ArrayBuffer; format: 'png' | 'jpg' } | null> {
-  const activeUrl = photo.annotatedObjectUrl || photo.objectUrl;
+  const activeUrl = photo.annotatedObjectUrl || photo.croppedObjectUrl || photo.objectUrl;
 
   // 1. Tentar ler ArrayBuffer direto
   try {
@@ -28,7 +28,7 @@ async function getCleanImageData(
       buf = await photo.file.arrayBuffer();
     }
     if (buf) {
-      const isPng = !photo.annotatedObjectUrl && photo.file?.type === 'image/png';
+      const isPng = !photo.annotatedObjectUrl && !photo.croppedObjectUrl && photo.file?.type === 'image/png';
       return { bytes: buf, format: isPng ? 'png' : 'jpg' };
     }
   } catch (err) {
