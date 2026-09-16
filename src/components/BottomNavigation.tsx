@@ -20,10 +20,29 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)',
       }}
     >
-      <div className="flex items-center justify-around max-w-md mx-auto px-4 h-14">
+      <div className="flex items-center justify-between gap-1.5 max-w-md mx-auto px-2 py-1.5 min-h-[62px]">
         {GEAPI_MODULES.map((mod) => {
           const isActive = mod.id === activeModuleId;
           const Icon = mod.icon || FileSpreadsheet;
+
+          const labelNode = mod.lines ? (
+            <span
+              className={`flex flex-col items-center justify-center text-center leading-none ${
+                isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
+              }`}
+            >
+              <span className="text-[10px] font-medium leading-none">{mod.lines[0]}</span>
+              <span className="text-[10.5px] font-bold leading-none tracking-wide mt-0.5">{mod.lines[1]}</span>
+            </span>
+          ) : (
+            <span
+              className={`text-[11.5px] font-bold tracking-tight text-center leading-none ${
+                isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
+              }`}
+            >
+              {mod.label}
+            </span>
+          );
 
           if (mod.externalUrl) {
             return (
@@ -31,15 +50,13 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 key={mod.id}
                 href={mod.externalUrl}
                 target="_self"
-                className="flex flex-col items-center justify-center w-full py-1 transition-colors cursor-pointer relative text-[#6B7280] hover:text-[#2F2F2F]"
+                className="flex-1 flex flex-col items-center justify-center h-[52px] px-1 py-1 rounded-xl transition-all cursor-pointer relative bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 shadow-2xs"
                 title={mod.fullName || mod.label}
               >
-                <div className="flex items-center justify-center w-8 h-8 rounded-full transition-all text-[#6B7280]">
-                  <Icon className="w-4 h-4 text-[#6B7280]" />
+                <div className="flex items-center justify-center w-5 h-5 mb-0.5 text-slate-600 shrink-0">
+                  <Icon className="w-4 h-4 text-slate-600" />
                 </div>
-                <span className="text-[11px] font-bold tracking-tight mt-0.5 text-[#6B7280]">
-                  {mod.label}
-                </span>
+                {labelNode}
               </a>
             );
           }
@@ -50,34 +67,30 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               type="button"
               onClick={() => onSelectModule?.(mod.id)}
               aria-current={isActive ? 'page' : undefined}
-              className={`flex flex-col items-center justify-center w-full py-1 transition-colors cursor-pointer relative ${
-                isActive ? 'text-[#2F2F2F]' : 'text-[#6B7280] hover:text-[#2F2F2F]'
+              className={`flex-1 flex flex-col items-center justify-center h-[52px] px-1 py-1 rounded-xl transition-all cursor-pointer relative ${
+                isActive
+                  ? 'bg-slate-100 text-[#2F2F2F] font-bold border border-slate-300 shadow-2xs'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 shadow-2xs'
               }`}
             >
-              {/* Active Accent Indicator Bar */}
+              {/* Active Accent Indicator Dot */}
               {isActive && (
-                <span className="absolute -top-1 w-8 h-1 rounded-full bg-[#F4B400]" />
+                <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-[#F4B400]" />
               )}
 
               <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${
-                  isActive ? 'bg-[#F4B400]/15 text-[#2F2F2F]' : 'text-[#6B7280]'
+                className={`flex items-center justify-center w-5 h-5 mb-0.5 shrink-0 ${
+                  isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
                 }`}
               >
                 <Icon
                   className={`w-4 h-4 ${
-                    isActive ? 'text-[#2F2F2F]' : 'text-[#6B7280]'
+                    isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
                   }`}
                 />
               </div>
 
-              <span
-                className={`text-[11px] font-bold tracking-tight mt-0.5 ${
-                  isActive ? 'text-[#2F2F2F]' : 'text-[#6B7280]'
-                }`}
-              >
-                {mod.label}
-              </span>
+              {labelNode}
             </button>
           );
         })}

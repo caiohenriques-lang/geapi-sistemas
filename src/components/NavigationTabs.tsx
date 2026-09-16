@@ -1,9 +1,10 @@
 import React from 'react';
-import { FileSpreadsheet, ShieldAlert } from 'lucide-react';
+import { FileSpreadsheet, LayoutDashboard, ShieldAlert } from 'lucide-react';
 
 export interface SystemModule {
   id: string;
   label: string;
+  lines?: [string, string];
   fullName?: string;
   description?: string;
   externalUrl?: string;
@@ -17,6 +18,14 @@ export const GEAPI_MODULES: SystemModule[] = [
     fullName: 'Solicitação de Manutenção de Vias',
     description: 'Emissão e confecção de formulários de manutenção de vias',
     icon: FileSpreadsheet,
+  },
+  {
+    id: 'portal-gestao',
+    label: 'Portal de Gestão GEAPI',
+    lines: ['Portal de Gestão', 'GEAPI'],
+    fullName: 'Portal de Gestão GEAPI',
+    description: 'Portal de Gestão Integrada GEAPI',
+    icon: LayoutDashboard,
   },
   {
     id: 'sat',
@@ -44,10 +53,22 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       className="hidden sm:block bg-white border-b border-[#E5E7EB]"
     >
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center gap-2 py-2 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2.5 py-2.5 overflow-x-auto no-scrollbar">
           {GEAPI_MODULES.map((mod) => {
             const isActive = mod.id === activeModuleId;
             const Icon = mod.icon || FileSpreadsheet;
+
+            const minWidthClass =
+              mod.id === 'portal-gestao' ? 'min-w-[150px] px-3.5' : 'min-w-[105px] px-4';
+
+            const labelContent = mod.lines ? (
+              <span className="flex flex-col items-center justify-center text-center leading-none">
+                <span className="text-xs sm:text-sm font-medium leading-none">{mod.lines[0]}</span>
+                <span className="text-xs sm:text-sm font-bold leading-none tracking-wide mt-1">{mod.lines[1]}</span>
+              </span>
+            ) : (
+              <span className="text-xs sm:text-sm font-bold tracking-tight">{mod.label}</span>
+            );
 
             if (mod.externalUrl) {
               return (
@@ -55,11 +76,11 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
                   key={mod.id}
                   href={mod.externalUrl}
                   target="_self"
-                  className="relative px-4 py-2 rounded-lg text-xs sm:text-sm font-bold tracking-tight transition-all flex items-center gap-2 shrink-0 cursor-pointer bg-transparent text-[#6B7280] hover:text-[#2F2F2F] hover:bg-[#E5E7EB]/40 border border-transparent"
+                  className={`relative h-12 ${minWidthClass} rounded-xl text-xs sm:text-sm font-bold tracking-tight transition-all flex items-center justify-center gap-2.5 shrink-0 cursor-pointer bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 hover:border-slate-300 shadow-2xs`}
                   title={mod.fullName || mod.label}
                 >
-                  <Icon className="w-4 h-4 text-[#6B7280]" />
-                  <span>{mod.label}</span>
+                  <Icon className="w-4 h-4 text-slate-600 shrink-0" />
+                  {labelContent}
                 </a>
               );
             }
@@ -70,21 +91,21 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
                 type="button"
                 onClick={() => onSelectModule?.(mod.id)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative px-4 py-2 rounded-lg text-xs sm:text-sm font-bold tracking-tight transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                className={`relative h-12 ${minWidthClass} rounded-xl text-xs sm:text-sm tracking-tight transition-all flex items-center justify-center gap-2.5 shrink-0 cursor-pointer ${
                   isActive
-                    ? 'bg-[#E5E7EB]/50 text-[#2F2F2F] border border-[#E5E7EB]'
-                    : 'bg-transparent text-[#6B7280] hover:text-[#2F2F2F] hover:bg-[#E5E7EB]/30 border border-transparent'
+                    ? 'bg-slate-100 text-[#2F2F2F] font-bold border border-slate-300 shadow-2xs'
+                    : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 hover:border-slate-300 shadow-2xs'
                 }`}
                 title={mod.fullName || mod.label}
               >
                 <Icon
-                  className={`w-4 h-4 transition-colors ${
-                    isActive ? 'text-[#2F2F2F]' : 'text-[#6B7280]'
+                  className={`w-4 h-4 shrink-0 transition-colors ${
+                    isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
                   }`}
                 />
-                <span>{mod.label}</span>
+                {labelContent}
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#F4B400] ml-0.5" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#F4B400] ml-0.5 shrink-0" />
                 )}
               </button>
             );
