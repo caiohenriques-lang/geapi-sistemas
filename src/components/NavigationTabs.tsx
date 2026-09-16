@@ -25,6 +25,7 @@ export const GEAPI_MODULES: SystemModule[] = [
     lines: ['Portal de Gestão', 'GEAPI'],
     fullName: 'Portal de Gestão GEAPI',
     description: 'Portal de Gestão Integrada GEAPI',
+    externalUrl: 'https://geapife.vercel.app/',
     icon: LayoutDashboard,
   },
   {
