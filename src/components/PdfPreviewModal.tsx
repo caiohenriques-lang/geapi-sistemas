@@ -119,7 +119,7 @@ export const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({
   return (
     <div
       id="pdf-modal-backdrop"
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 z-[9999] isolate bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
       role="dialog"
       aria-modal="true"
     >

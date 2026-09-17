@@ -37,6 +37,7 @@ import {
 import { generatePdf } from '../lib/generatePdf';
 import { AutocompleteSelect, AutocompleteOption } from './AutocompleteSelect';
 import { PhotoUploader } from './PhotoUploader';
+import { MapSection } from './MapSection';
 import { PdfPreviewModal } from './PdfPreviewModal';
 
 export const SmvForm: React.FC = () => {
@@ -56,6 +57,15 @@ export const SmvForm: React.FC = () => {
     localizacao: '',
     tipoPavimento: '',
     fotos: [],
+    usarMapa: null,
+    mapaItem: null,
+    mapaLat: null,
+    mapaLng: null,
+    mapaZoom: 16,
+    mapaCenterLat: null,
+    mapaCenterLng: null,
+    mapaMarkerType: 'PIN',
+    mapaObjectUrl: undefined,
     responsavelTecnico: null,
     gerenteArea: GERENTE_FIXO,
     dataConfeccao: formatDateToBR(),
@@ -205,7 +215,7 @@ export const SmvForm: React.FC = () => {
 
   // Execute complete reset upon user confirmation
   const handleConfirmReset = () => {
-    // 1. Revoke all created photo object URLs to prevent memory leak
+    // 1. Revoke all created photo object URLs and map URL to prevent memory leak
     formData.fotos.forEach((f) => {
       if (f.objectUrl) {
         try {
@@ -229,6 +239,14 @@ export const SmvForm: React.FC = () => {
         }
       }
     });
+
+    if (formData.mapaObjectUrl) {
+      try {
+        URL.revokeObjectURL(formData.mapaObjectUrl);
+      } catch (e) {
+        console.warn('Error revoking map object URL:', e);
+      }
+    }
 
     // 2. Clear all HTML file input elements in DOM
     const fileInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
@@ -327,7 +345,7 @@ export const SmvForm: React.FC = () => {
         </div>
 
         {/* Main Form Body */}
-        <form onSubmit={(e) => e.preventDefault()} className="p-6 sm:p-8 space-y-8">
+        <form onSubmit={(e) => e.preventDefault()} autoComplete="off" className="p-6 sm:p-8 space-y-8">
           {/* Section 1: Identificação da SMV */}
           <section className="space-y-6">
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
@@ -580,6 +598,7 @@ export const SmvForm: React.FC = () => {
                 </label>
                 <select
                   id="tipoPavimento"
+                  autoComplete="off"
                   value={formData.tipoPavimento}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -727,10 +746,38 @@ export const SmvForm: React.FC = () => {
             <PhotoUploader
               photos={formData.fotos}
               onChange={(fotos) => setFormData((prev) => ({ ...prev, fotos }))}
+              usarMapa={formData.usarMapa}
+              mapaObjectUrl={formData.mapaObjectUrl}
               error={getFieldError('fotos')}
-              isInitialEmptyPending={formData.fotos.length === 0}
+              isInitialEmptyPending={formData.fotos.length === 0 && !formData.mapaObjectUrl}
             />
           </section>
+
+          {/* Section 4.5: Mapa de Localização (Posicionado antes da Data de Confecção) */}
+          <MapSection
+            usarMapa={formData.usarMapa}
+            onUsarMapaChange={(usarMapa) => setFormData((prev) => ({ ...prev, usarMapa }))}
+            mapaItem={formData.mapaItem}
+            onMapaItemChange={(mapaItem) => setFormData((prev) => ({ ...prev, mapaItem }))}
+            mapaLat={formData.mapaLat}
+            onMapaLatChange={(mapaLat) => setFormData((prev) => ({ ...prev, mapaLat }))}
+            mapaLng={formData.mapaLng}
+            onMapaLngChange={(mapaLng) => setFormData((prev) => ({ ...prev, mapaLng }))}
+            mapaZoom={formData.mapaZoom}
+            onMapaZoomChange={(mapaZoom) => setFormData((prev) => ({ ...prev, mapaZoom }))}
+            mapaCenterLat={formData.mapaCenterLat}
+            onMapaCenterLatChange={(mapaCenterLat) => setFormData((prev) => ({ ...prev, mapaCenterLat }))}
+            mapaCenterLng={formData.mapaCenterLng}
+            onMapaCenterLngChange={(mapaCenterLng) => setFormData((prev) => ({ ...prev, mapaCenterLng }))}
+            mapaMarkerType={formData.mapaMarkerType}
+            onMapaMarkerTypeChange={(mapaMarkerType) => setFormData((prev) => ({ ...prev, mapaMarkerType }))}
+            mapaObjectUrl={formData.mapaObjectUrl}
+            onMapaObjectUrlChange={(mapaObjectUrl) =>
+              setFormData((prev) => ({ ...prev, mapaObjectUrl }))
+            }
+            photos={formData.fotos}
+            onPhotosChange={(fotos) => setFormData((prev) => ({ ...prev, fotos }))}
+          />
 
           {/* Section 5: Data e Encaminhamento */}
           <section className="space-y-6">

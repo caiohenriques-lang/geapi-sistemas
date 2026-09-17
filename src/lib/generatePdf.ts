@@ -77,6 +77,10 @@ interface FittedBox {
   height: number;
   observacao?: string;
   embeddedImg: any;
+  slotX: number;
+  slotY: number;
+  slotW: number;
+  slotH: number;
 }
 
 /**
@@ -117,6 +121,10 @@ function fitImageInSlot(
     height: drawH,
     observacao,
     embeddedImg,
+    slotX,
+    slotY,
+    slotW,
+    slotH,
   };
 }
 
@@ -397,15 +405,31 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
     color: black,
   });
 
-  // Render photo(s) inside CROQUI box with smart dynamic layout (1 to 4 photos)
+  // Render photo(s) and optional map inside CROQUI box with smart dynamic layout (1 to 4 items)
   const photoBoxTop = currentY - 16;
   const photoBoxH = croquiH - 20;
   const photoBoxW = tableWidth - 10;
   const photoBoxX = marginX + 5;
   const photoBoxBottom = photoBoxTop - photoBoxH;
 
-  if (formData.fotos && formData.fotos.length > 0) {
-    const photosToRender = formData.fotos.slice(0, 4);
+  // Build list of visual items (user photos up to 3 + map if active)
+  let photosToRender: SmvPhotoItem[] = formData.fotos ? [...formData.fotos] : [];
+  if (formData.usarMapa === 'SIM') {
+    photosToRender = photosToRender.slice(0, 3);
+    if (formData.mapaObjectUrl) {
+      photosToRender.push({
+        id: `map_pdf_item`,
+        file: new File([], `mapa_localizacao.jpg`, { type: 'image/jpeg' }),
+        objectUrl: formData.mapaObjectUrl,
+        name: `MAPA DE LOCALIZAÇÃO`,
+        observacao: undefined, // Requirement 16: No text overlay or extra text for map
+      });
+    }
+  } else {
+    photosToRender = photosToRender.slice(0, 4);
+  }
+
+  if (photosToRender.length > 0) {
 
     // Prepare embedded images and compute aspect ratios
     const embeddedList: Array<{
@@ -567,6 +591,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
 
     // Desenhar imagens calculadas e suas observações
     for (const box of boxesToDraw) {
+      // 1. Desenhar a imagem centralizada e proporcionalmente escalada
       page.drawImage(box.embeddedImg, {
         x: box.x,
         y: box.y,
@@ -574,7 +599,7 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
         height: box.height,
       });
 
-      // Borda sutil de enquadramento
+      // 2. Borda sutil em volta da imagem para acabamento limpo
       page.drawRectangle({
         x: box.x,
         y: box.y,
@@ -584,11 +609,11 @@ export async function createPdfDocument(formData: SmvFormData): Promise<Uint8Arr
         borderWidth: 0.35,
       });
 
-      // Observação opcional abaixo da foto
+      // 3. Observação opcional abaixo da foto
       if (box.observacao) {
         page.drawText(box.observacao, {
           x: box.x,
-          y: Math.max(photoBoxBottom + 2, box.y - 10),
+          y: box.slotY + 3,
           size: 7,
           font: helveticaBold,
           color: rgb(0.2, 0.2, 0.2),

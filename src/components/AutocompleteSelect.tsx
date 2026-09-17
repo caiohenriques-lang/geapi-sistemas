@@ -40,6 +40,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isUserTyping, setIsUserTyping] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [userActivated, setUserActivated] = useState(false);
   const listboxId = useId();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +80,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
       ) {
         setIsOpen(false);
         setIsUserTyping(false);
+        setUserActivated(false);
 
         // If search term doesn't match selected value, reset to current value or clear
         const match = options.find(
@@ -130,6 +132,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
     onChange(option.value, option);
     setIsOpen(false);
     setHighlightedIndex(-1);
+    setUserActivated(false);
   };
 
   const handleClear = (e: React.MouseEvent) => {
@@ -182,6 +185,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       setIsUserTyping(false);
+      setUserActivated(false);
       if (selectedOption) {
         setSearchTerm(selectedOption.label);
       }
@@ -192,6 +196,7 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
         }
         setIsOpen(false);
       }
+      setUserActivated(false);
     }
   };
 
@@ -217,15 +222,24 @@ export const AutocompleteSelect: React.FC<AutocompleteSelectProps> = ({
         <input
           ref={inputRef}
           id={id}
+          name={`geapi-select-${id}`}
           type="text"
+          autoComplete="off"
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="none"
+          readOnly={!userActivated}
+          onPointerDown={() => setUserActivated(true)}
           value={searchTerm}
           onChange={handleInputChange}
           onFocus={() => {
+            setUserActivated(true);
             handleOpenDropdown();
             // Optional: select text on focus so user can immediately type over or see full options
             setTimeout(() => inputRef.current?.select(), 10);
           }}
           onClick={() => {
+            setUserActivated(true);
             if (!isOpen) handleOpenDropdown();
           }}
           onKeyDown={handleKeyDown}

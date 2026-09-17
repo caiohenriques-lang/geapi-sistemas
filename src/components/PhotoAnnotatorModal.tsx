@@ -9,7 +9,6 @@ import {
   Sparkles,
   Crop,
   RotateCw,
-  AlertTriangle,
 } from 'lucide-react';
 import { AnnotationShape, CropArea, SmvPhotoItem } from '../types/smv';
 
@@ -38,13 +37,6 @@ interface CropDragState {
   initialCrop: CropArea;
 }
 
-interface ConfirmationModalState {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  onConfirm: () => void;
-}
-
 export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
   photo,
   photoIndex,
@@ -68,9 +60,6 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
   // Crop drag state
   const [cropDragState, setCropDragState] = useState<CropDragState | null>(null);
   const [hoveredHandle, setHoveredHandle] = useState<HandleType | null>(null);
-
-  // Confirmation modal state
-  const [confirmModal, setConfirmModal] = useState<ConfirmationModalState | null>(null);
 
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -236,7 +225,31 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
 
       ctx.drawImage(img, srcX, srcY, srcW, srcH, cropX, cropY, cropW, cropH);
 
-      // 3. Crop Box Outline
+      // 3. Render markings inside the unmasked crop area (with clipping)
+      if (annotations.length > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cropX, cropY, cropW, cropH);
+        ctx.clip();
+
+        const baseStroke = Math.max(3, Math.round(Math.max(width, height) * 0.006));
+        annotations.forEach((shape) => {
+          const startX = shape.startX * width;
+          const startY = shape.startY * height;
+          const endX = shape.endX * width;
+          const endY = shape.endY * height;
+
+          if (shape.type === 'rectangle') {
+            drawRectangleShape(ctx, startX, startY, endX, endY, baseStroke, '#dc2626');
+          } else if (shape.type === 'arrow') {
+            drawArrowShape(ctx, startX, startY, endX, endY, baseStroke, '#dc2626');
+          }
+        });
+
+        ctx.restore();
+      }
+
+      // 4. Crop Box Outline
       ctx.save();
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
@@ -290,21 +303,30 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
 
       ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, width, height);
 
-      // Render saved annotations relative to cropped area
+      // Render saved annotations:
+      // All annotations are stored referenced to the ORIGINAL photo coordinates [0..1].
+      // Map original coordinates to current viewport [0..width, 0..height] and clip to viewport.
       const displayStroke = Math.max(3, Math.round(Math.max(width, height) * 0.006));
 
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, width, height);
+      ctx.clip(); // Clean clipping for markings that extend partially or fully outside crop
+
       annotations.forEach((shape) => {
-        const startX = shape.startX * width;
-        const startY = shape.startY * height;
-        const endX = shape.endX * width;
-        const endY = shape.endY * height;
+        const localStartX = ((shape.startX - effCrop.x) / effCrop.width) * width;
+        const localStartY = ((shape.startY - effCrop.y) / effCrop.height) * height;
+        const localEndX = ((shape.endX - effCrop.x) / effCrop.width) * width;
+        const localEndY = ((shape.endY - effCrop.y) / effCrop.height) * height;
 
         if (shape.type === 'rectangle') {
-          drawRectangleShape(ctx, startX, startY, endX, endY, displayStroke, '#dc2626');
+          drawRectangleShape(ctx, localStartX, localStartY, localEndX, localEndY, displayStroke, '#dc2626');
         } else if (shape.type === 'arrow') {
-          drawArrowShape(ctx, startX, startY, endX, endY, displayStroke, '#dc2626');
+          drawArrowShape(ctx, localStartX, localStartY, localEndX, localEndY, displayStroke, '#dc2626');
         }
       });
+
+      ctx.restore();
 
       // Render in-progress shape
       if (isDrawing && currentStart && currentEnd) {
@@ -585,13 +607,20 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
       const dy = Math.abs(currentEnd.y - currentStart.y);
 
       if (dx > 0.01 || dy > 0.01) {
+        // Convert from viewport relative coordinates to ORIGINAL photo reference coordinates [0..1]
+        const effCrop = activeCrop || { x: 0, y: 0, width: 1, height: 1 };
+        const origStartX = effCrop.x + currentStart.x * effCrop.width;
+        const origStartY = effCrop.y + currentStart.y * effCrop.height;
+        const origEndX = effCrop.x + currentEnd.x * effCrop.width;
+        const origEndY = effCrop.y + currentEnd.y * effCrop.height;
+
         const newShape: AnnotationShape = {
           id: `shape_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           type: selectedTool,
-          startX: currentStart.x,
-          startY: currentStart.y,
-          endX: currentEnd.x,
-          endY: currentEnd.y,
+          startX: Math.max(0, Math.min(1, origStartX)),
+          startY: Math.max(0, Math.min(1, origStartY)),
+          endX: Math.max(0, Math.min(1, origEndX)),
+          endY: Math.max(0, Math.min(1, origEndY)),
         };
         setAnnotations((prev) => [...prev, newShape]);
       }
@@ -626,65 +655,24 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
     }
   };
 
-  // Apply crop change with confirmation if annotations exist
-  const executeApplyCrop = (newCrop: CropArea | null) => {
-    setActiveCrop(newCrop);
-    if (newCrop) {
-      setTempCrop({ ...newCrop });
-    } else {
-      setTempCrop({ x: 0, y: 0, width: 1, height: 1 });
-    }
-    setSelectedTool('rectangle');
-  };
-
+  // Apply crop change non-destructively (never deletes annotations)
   const handleApplyCrop = () => {
-    // Check if crop area actually changed or covers full image (~100%)
     const isFullImage =
       tempCrop.x <= 0.005 &&
       tempCrop.y <= 0.005 &&
       tempCrop.width >= 0.99 &&
       tempCrop.height >= 0.99;
 
-    const targetCrop = isFullImage ? null : tempCrop;
-
-    // Check if crop changed from activeCrop
-    const cropChanged =
-      JSON.stringify(targetCrop) !== JSON.stringify(activeCrop);
-
-    if (cropChanged && annotations.length > 0) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Alterar recorte da imagem?',
-        message:
-          'Modificar o recorte da imagem irá remover as marcações existentes (retângulos/setas), pois a área de enquadramento foi alterada. Deseja continuar?',
-        onConfirm: () => {
-          setAnnotations([]);
-          executeApplyCrop(targetCrop);
-          setConfirmModal(null);
-        },
-      });
-    } else {
-      executeApplyCrop(targetCrop);
-    }
+    const targetCrop = isFullImage ? null : { ...tempCrop };
+    setActiveCrop(targetCrop);
+    setSelectedTool('rectangle');
   };
 
-  // Restore Original Full Image
+  // Restore Original Full Image non-destructively (preserves all annotations)
   const handleRestoreOriginal = () => {
-    if (annotations.length > 0 && activeCrop !== null) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'Restaurar imagem original?',
-        message:
-          'Restaurar a imagem original irá remover o recorte e descartar as marcações criadas. Deseja continuar?',
-        onConfirm: () => {
-          setAnnotations([]);
-          executeApplyCrop(null);
-          setConfirmModal(null);
-        },
-      });
-    } else {
-      executeApplyCrop(null);
-    }
+    setActiveCrop(null);
+    setTempCrop({ x: 0, y: 0, width: 1, height: 1 });
+    // Preserves all annotations intact!
   };
 
   // Cancel Crop Editing Mode without applying tempCrop
@@ -706,7 +694,7 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
     setAnnotations([]);
   };
 
-  // Save Final Edited Image & Annotations
+  // Save Final Edited Image & Annotations at High Resolution
   const handleSave = async () => {
     if (!photo || !imageRef.current) {
       onClose();
@@ -714,10 +702,9 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
     }
 
     const img = imageRef.current;
-
-    // 1. Calculate high-res source dimensions
     const effCrop = activeCrop;
 
+    // 1. Calculate high-res source dimensions from original photo
     let srcX = 0;
     let srcY = 0;
     let srcW = img.naturalWidth;
@@ -726,26 +713,28 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
     if (effCrop) {
       srcX = Math.round(effCrop.x * img.naturalWidth);
       srcY = Math.round(effCrop.y * img.naturalHeight);
-      srcW = Math.round(effCrop.width * img.naturalWidth);
-      srcH = Math.round(effCrop.height * img.naturalHeight);
+      srcW = Math.max(10, Math.round(effCrop.width * img.naturalWidth));
+      srcH = Math.max(10, Math.round(effCrop.height * img.naturalHeight));
     }
 
     // High resolution cropped base canvas
-    const croppedCanvas = document.createElement('canvas');
-    croppedCanvas.width = srcW;
-    croppedCanvas.height = srcH;
-    const cctx = croppedCanvas.getContext('2d');
+    const baseCanvas = document.createElement('canvas');
+    baseCanvas.width = srcW;
+    baseCanvas.height = srcH;
+    const bctx = baseCanvas.getContext('2d');
 
-    if (!cctx) {
+    if (!bctx) {
       onSave(photoIndex, annotations, effCrop || undefined);
       onClose();
       return;
     }
 
-    cctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+    bctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
 
     // If no crop and no annotations, return clean original
     if (!effCrop && annotations.length === 0) {
+      baseCanvas.width = 0;
+      baseCanvas.height = 0;
       onSave(photoIndex, [], undefined, undefined, undefined);
       onClose();
       return;
@@ -772,7 +761,7 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
     let annotatedObjectUrl: string | undefined = undefined;
 
     if (effCrop) {
-      croppedObjectUrl = await getCanvasBlob(croppedCanvas);
+      croppedObjectUrl = await getCanvasBlob(baseCanvas);
     }
 
     if (annotations.length > 0) {
@@ -782,29 +771,55 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
       const actx = annotatedCanvas.getContext('2d');
 
       if (actx) {
-        actx.drawImage(croppedCanvas, 0, 0);
+        actx.drawImage(baseCanvas, 0, 0);
 
+        // Vector stroke width scaled to native photo resolution
         const strokeWidth = Math.max(
           4,
           Math.round(Math.max(srcW, srcH) * 0.0055)
         );
 
+        // Clean clipping to canvas viewport
+        actx.save();
+        actx.beginPath();
+        actx.rect(0, 0, srcW, srcH);
+        actx.clip();
+
         annotations.forEach((shape) => {
-          const startX = shape.startX * srcW;
-          const startY = shape.startY * srcH;
-          const endX = shape.endX * srcW;
-          const endY = shape.endY * srcH;
+          let localStartX: number;
+          let localStartY: number;
+          let localEndX: number;
+          let localEndY: number;
+
+          if (effCrop) {
+            localStartX = ((shape.startX - effCrop.x) / effCrop.width) * srcW;
+            localStartY = ((shape.startY - effCrop.y) / effCrop.height) * srcH;
+            localEndX = ((shape.endX - effCrop.x) / effCrop.width) * srcW;
+            localEndY = ((shape.endY - effCrop.y) / effCrop.height) * srcH;
+          } else {
+            localStartX = shape.startX * srcW;
+            localStartY = shape.startY * srcH;
+            localEndX = shape.endX * srcW;
+            localEndY = shape.endY * srcH;
+          }
 
           if (shape.type === 'rectangle') {
-            drawRectangleShape(actx, startX, startY, endX, endY, strokeWidth, '#dc2626');
+            drawRectangleShape(actx, localStartX, localStartY, localEndX, localEndY, strokeWidth, '#dc2626');
           } else if (shape.type === 'arrow') {
-            drawArrowShape(actx, startX, startY, endX, endY, strokeWidth, '#dc2626');
+            drawArrowShape(actx, localStartX, localStartY, localEndX, localEndY, strokeWidth, '#dc2626');
           }
         });
 
+        actx.restore();
+
         annotatedObjectUrl = await getCanvasBlob(annotatedCanvas);
+        annotatedCanvas.width = 0;
+        annotatedCanvas.height = 0;
       }
     }
+
+    baseCanvas.width = 0;
+    baseCanvas.height = 0;
 
     onSave(
       photoIndex,
@@ -857,6 +872,20 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
           <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
             <button
               type="button"
+              onClick={() => handleSelectTool('crop')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                selectedTool === 'crop'
+                  ? 'bg-white text-rose-600 shadow-xs border border-rose-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+              title="Ferramenta de Recorte / Crop"
+            >
+              <Crop className="w-3.5 h-3.5" />
+              Recortar
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleSelectTool('rectangle')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
                 selectedTool === 'rectangle'
@@ -881,20 +910,6 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
             >
               <MoveUpRight className="w-3.5 h-3.5" />
               Seta
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSelectTool('crop')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-                selectedTool === 'crop'
-                  ? 'bg-white text-rose-600 shadow-xs border border-rose-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-              }`}
-              title="Ferramenta de Recorte / Crop"
-            >
-              <Crop className="w-3.5 h-3.5" />
-              Recortar
             </button>
           </div>
 
@@ -1053,43 +1068,6 @@ export const PhotoAnnotatorModal: React.FC<PhotoAnnotatorModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal for Clearing Annotations on Crop Change */}
-      {confirmModal && confirmModal.isOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 border border-slate-200 animate-scaleUp">
-            <div className="flex items-start gap-3.5">
-              <div className="p-2.5 bg-rose-100 rounded-xl text-rose-600 shrink-0">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-sm font-bold text-slate-900">
-                  {confirmModal.title}
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {confirmModal.message}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setConfirmModal(null)}
-                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmModal.onConfirm}
-                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
-              >
-                Continuar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,11 +1,24 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Trash2, RefreshCw, AlertCircle, CheckCircle2, Sparkles, Edit3, Crop } from 'lucide-react';
+import {
+  Upload,
+  Trash2,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
+  Sparkles,
+  Edit3,
+  Crop,
+  Map,
+  MapPin,
+} from 'lucide-react';
 import { SmvPhotoItem, AnnotationShape, CropArea } from '../types/smv';
 import { PhotoAnnotatorModal } from './PhotoAnnotatorModal';
 
 interface PhotoUploaderProps {
   photos: SmvPhotoItem[];
   onChange: (photos: SmvPhotoItem[]) => void;
+  usarMapa: 'SIM' | 'NAO' | null;
+  mapaObjectUrl?: string;
   error?: string;
   isInitialEmptyPending?: boolean;
 }
@@ -13,12 +26,17 @@ interface PhotoUploaderProps {
 export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   photos,
   onChange,
+  usarMapa,
+  mapaObjectUrl,
   error,
   isInitialEmptyPending = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceIndexRef = useRef<number | null>(null);
   const [annotatingIndex, setAnnotatingIndex] = useState<number | null>(null);
+
+  // Maximum allowed user photos depends on whether Map occupies the 4th position
+  const maxUserPhotos = usarMapa === 'SIM' ? 3 : 4;
 
   const handleFilesSelected = (filesList: FileList | null) => {
     if (!filesList || filesList.length === 0) return;
@@ -31,7 +49,6 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       const targetIdx = replaceIndexRef.current;
       const fileToReplace = newFiles[0];
 
-      // Revoke old object URLs
       if (photos[targetIdx]) {
         if (photos[targetIdx].objectUrl) URL.revokeObjectURL(photos[targetIdx].objectUrl);
         if (photos[targetIdx].croppedObjectUrl) URL.revokeObjectURL(photos[targetIdx].croppedObjectUrl!);
@@ -43,7 +60,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         id: `photo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         file: fileToReplace,
         objectUrl: URL.createObjectURL(fileToReplace),
-        name: '', // Do not store/display filename
+        name: '',
         observacao: updated[targetIdx]?.observacao || '',
         annotations: [],
         crop: undefined,
@@ -54,8 +71,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       onChange(updated);
       replaceIndexRef.current = null;
     } else {
-      // Adding new photos (max 4)
-      const slotsAvailable = 4 - photos.length;
+      // Adding new photos (max 3 if map is used, max 4 otherwise)
+      const slotsAvailable = maxUserPhotos - photos.length;
       if (slotsAvailable <= 0) return;
 
       const filesToAdd = newFiles.slice(0, slotsAvailable);
@@ -71,7 +88,6 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       onChange([...photos, ...newPhotoItems]);
     }
 
-    // Reset input value
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -99,7 +115,6 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     const targetPhoto = updated[photoIdx];
     if (!targetPhoto) return;
 
-    // Revoke old object URLs if replaced
     if (targetPhoto.croppedObjectUrl && targetPhoto.croppedObjectUrl !== croppedObjectUrl) {
       URL.revokeObjectURL(targetPhoto.croppedObjectUrl);
     }
@@ -136,7 +151,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (photos.length >= 4) return;
+    if (photos.length >= maxUserPhotos) return;
     if (e.dataTransfer.files) {
       handleFilesSelected(e.dataTransfer.files);
     }
@@ -151,16 +166,17 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     onChange(updated);
   };
 
-  const isMaxReached = photos.length >= 4;
-  const isMinMet = photos.length >= 1;
-
-  const showHighlight = (isInitialEmptyPending && photos.length === 0) || !!error;
+  const isMapActive = usarMapa === 'SIM';
+  const totalCroquiElements = photos.length + (isMapActive && mapaObjectUrl ? 1 : 0);
+  const isMinMet = totalCroquiElements >= 1 || photos.length >= 1;
+  const showHighlight = (isInitialEmptyPending && totalCroquiElements === 0) || !!error;
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-          Observações / Croqui - Fotografias <span className="text-rose-500 font-bold">*</span>
+    <div className="space-y-4">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+          Observações / Croqui - Fotografias do Local <span className="text-rose-500 font-bold">*</span>
         </label>
         <span
           className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
@@ -169,7 +185,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               : 'bg-rose-50 text-rose-700 border border-rose-200'
           }`}
         >
-          {photos.length} de 4 foto(s) {isMinMet ? '(Mínimo atendido)' : '(Mínimo 1 obrigatória)'}
+          {photos.length} foto(s) {isMapActive ? '+ 1 mapa' : ''}{' '}
+          {isMinMet ? '(Mínimo atendido)' : '(Mínimo 1 item obrigatório)'}
         </span>
       </div>
 
@@ -178,7 +195,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        multiple={photos.length < 4}
+        multiple={photos.length < maxUserPhotos}
         onChange={(e) => handleFilesSelected(e.target.files)}
         className="hidden"
         id="photo-file-input"
@@ -186,8 +203,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
       {/* Upload Zone / Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-        {/* Render Selected Photos */}
-        {photos.map((photo, index) => {
+        {/* Render Selected User Photos */}
+        {photos.slice(0, maxUserPhotos).map((photo, index) => {
           const isMarked = photo.annotations && photo.annotations.length > 0;
           const isCropped = !!photo.crop;
           const displayUrl = photo.annotatedObjectUrl || photo.croppedObjectUrl || photo.objectUrl;
@@ -280,8 +297,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
           );
         })}
 
-        {/* Dropzone Box when less than 4 photos */}
-        {!isMaxReached && (
+        {/* Dropzone Box when less than max photos */}
+        {photos.length < maxUserPhotos && (
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -292,7 +309,11 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                 : 'border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50'
             }`}
           >
-            <div className={`p-2.5 rounded-full ${showHighlight ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'}`}>
+            <div
+              className={`p-2.5 rounded-full ${
+                showHighlight ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
               <Upload className="w-5 h-5" />
             </div>
             <div>
@@ -302,9 +323,42 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                   : `Clique ou arraste para adicionar (${photos.length + 1}ª foto)`}
               </p>
               <p className="text-[11px] text-slate-500 mt-1">
-                Suporta PNG, JPG, JPEG &bull; Até 4 fotografias &bull; Memória temporária
+                Suporta PNG, JPG, JPEG &bull; Até {maxUserPhotos} foto(s){' '}
+                {usarMapa === 'SIM' ? '(4º lugar reservado ao mapa)' : ''}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* 4th Reserved Slot Badge when MAP is active */}
+        {usarMapa === 'SIM' && (
+          <div className="group relative bg-slate-900 text-white rounded-xl overflow-hidden border border-slate-800 shadow-xs flex flex-col justify-between p-4 min-h-[190px]">
+            <div className="flex items-start justify-between">
+              <div className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                4º ITEM • CROQUI
+              </div>
+              <Map className="w-5 h-5 text-rose-400" />
+            </div>
+
+            <div className="space-y-1 my-auto">
+              <p className="text-xs font-bold uppercase text-white flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-rose-400" />
+                Mapa de Localização Ativo
+              </p>
+              <p className="text-[11px] text-slate-400 leading-normal">
+                O mapa de localização ocupará a 4ª posição no Croqui. Configure a referência, busca ou coordenadas no painel inferior do formulário.
+              </p>
+            </div>
+
+            {mapaObjectUrl ? (
+              <div className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Imagem do mapa gerada
+              </div>
+            ) : (
+              <div className="text-[11px] font-semibold text-amber-400 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400" /> Aguardando ponto no mapa
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -317,7 +371,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
       {isMinMet && !error && (
         <p className="text-xs text-emerald-700 font-medium flex items-center gap-1">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Fotografias prontas ({photos.length} de 4).
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Fotos configuradas ({photos.length} foto(s) {isMapActive ? '+ 1 mapa' : ''}).
         </p>
       )}
 
@@ -332,4 +386,3 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     </div>
   );
 };
-

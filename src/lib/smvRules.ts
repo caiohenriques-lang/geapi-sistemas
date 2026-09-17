@@ -142,8 +142,9 @@ export function validateForm(formData: SmvFormData): {
     errors.tipoPavimento = 'Tipo de Pavimento é obrigatório.';
   }
 
-  if (!formData.fotos || formData.fotos.length < 1) {
-    errors.fotos = 'É obrigatória a inclusão de pelo menos uma imagem.';
+  const totalItems = (formData.fotos?.length || 0) + (formData.usarMapa === 'SIM' && formData.mapaObjectUrl ? 1 : 0);
+  if (totalItems < 1) {
+    errors.fotos = 'É obrigatória a inclusão de pelo menos uma fotografia ou mapa de localização.';
   }
 
   if (!formData.responsavelTecnico) {
