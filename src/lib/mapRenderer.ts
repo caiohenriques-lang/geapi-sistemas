@@ -304,12 +304,12 @@ export async function renderLocationMapCanvas(
     const markerX = width / 2 + (markerPixel.x - tileCenter.x) * tilePixelScale;
     const markerY = height / 2 + (markerPixel.y - tileCenter.y) * tilePixelScale;
 
-    // Fator de escala das marcações no documento de saída (+25% adicional sobre o ajuste anterior: 1.32 * 1.25 = 1.65)
-    const MARKER_SIZE_BOOST = 1.65;
+    // Fator de escala das marcações no documento de saída (+32% para visibilidade e legibilidade ideais no PDF)
+    const MARKER_SIZE_BOOST = 1.32;
     const markerScale = scale * MARKER_SIZE_BOOST;
 
     // Desenhar somente se estiver dentro dos limites visíveis (com margem de transbordo)
-    if (markerX >= -150 && markerX <= width + 150 && markerY >= -150 && markerY <= height + 150) {
+    if (markerX >= -120 && markerX <= width + 120 && markerY >= -120 && markerY <= height + 120) {
       if (markerType === 'SETA') {
         drawArrowMarker(ctx, markerX, markerY, markerScale);
       } else {
