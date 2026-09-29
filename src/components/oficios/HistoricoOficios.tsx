@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Download,
-  Printer,
   RotateCw,
   Search,
   X,
@@ -13,9 +12,11 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import { HistoricoOficiosItem } from '../../types/controleOficios';
 import { fetchHistoricoOficios } from '../../services/oficiosService';
+import { generateHistoricoOficiosPdf } from '../../lib/generateHistoricoOficiosPdf';
 
 interface HistoricoOficiosProps {
   refreshTrigger?: number;
@@ -134,12 +135,13 @@ function getMonthYearFromDate(val?: string | null): { key: string; label: string
 export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigger = 0 }) => {
   const [items, setItems] = useState<HistoricoOficiosItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Filtros
   const [filtroCt, setFiltroCt] = useState<string>('TODOS');
-  const [filtroMotivo, setFiltroMotivo] = useState<string>('TODOS');
   const [filtroMes, setFiltroMes] = useState<string>('TODOS');
+  const [filtroMotivo, setFiltroMotivo] = useState<string>('TODOS');
   const [filtroEmAberto, setFiltroEmAberto] = useState<boolean>(false);
   const [busca, setBusca] = useState<string>('');
 
@@ -205,7 +207,7 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
   // Reseta para a página 1 sempre que qualquer filtro mudar
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtroCt, filtroMotivo, filtroMes, filtroEmAberto, busca]);
+  }, [filtroCt, filtroMes, filtroMotivo, filtroEmAberto, busca]);
 
   // Manipulador de ordenação
   const handleSort = (field: SortField) => {
@@ -227,17 +229,17 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
         return false;
       }
 
-      // 2. Filtro Motivo
-      if (filtroMotivo !== 'TODOS' && item.motivo !== filtroMotivo) {
-        return false;
-      }
-
-      // 3. Filtro Mês (baseado em dataParada)
+      // 2. Filtro Mês (baseado em dataParada)
       if (filtroMes !== 'TODOS') {
         const mesInfo = getMonthYearFromDate(item.dataParada);
         if (!mesInfo || mesInfo.key !== filtroMes) {
           return false;
         }
+      }
+
+      // 3. Filtro Motivo
+      if (filtroMotivo !== 'TODOS' && item.motivo !== filtroMotivo) {
+        return false;
       }
 
       // 4. Filtro Em Aberto (oficioRetorno vazio)
@@ -275,9 +277,9 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
 
       return true;
     });
-  }, [items, filtroCt, filtroMotivo, filtroMes, filtroEmAberto, busca]);
+  }, [items, filtroCt, filtroMes, filtroMotivo, filtroEmAberto, busca]);
 
-  // Ordenação dos itens filtrados
+  // Ordenação dos itens filtrados (TODOS os itens filtrados, ANTES da paginação)
   const sortedItems = useMemo(() => {
     const list = [...filteredItems];
 
@@ -304,7 +306,7 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
     return list;
   }, [filteredItems, sortField, sortDirection]);
 
-  // Paginação
+  // Paginação (exibição em tela: 10 registros por página)
   const totalItems = sortedItems.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -319,20 +321,20 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
 
   const hasActiveFilters =
     filtroCt !== 'TODOS' ||
-    filtroMotivo !== 'TODOS' ||
     filtroMes !== 'TODOS' ||
+    filtroMotivo !== 'TODOS' ||
     filtroEmAberto ||
     busca.trim().length > 0;
 
   const handleResetFilters = () => {
     setFiltroCt('TODOS');
-    setFiltroMotivo('TODOS');
     setFiltroMes('TODOS');
+    setFiltroMotivo('TODOS');
     setFiltroEmAberto(false);
     setBusca('');
   };
 
-  // Exportação CSV
+  // Exportação CSV (usa sortedItems completo)
   const handleExportCsv = () => {
     if (sortedItems.length === 0) return;
 
@@ -379,9 +381,18 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
     URL.revokeObjectURL(url);
   };
 
-  // Impressão nativa (Exportar PDF)
-  const handlePrint = () => {
-    window.print();
+  // Exportação PDF Real (Gera e baixa arquivo PDF tabular completo de sortedItems com pdf-lib)
+  const handleExportPdf = async () => {
+    if (sortedItems.length === 0 || isGeneratingPdf) return;
+
+    try {
+      setIsGeneratingPdf(true);
+      await generateHistoricoOficiosPdf(sortedItems);
+    } catch (err) {
+      console.error('Falha ao gerar arquivo PDF do relatório histórico:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
@@ -398,7 +409,7 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
             <button
               type="button"
               onClick={() => loadData(true)}
-              disabled={isLoading}
+              disabled={isLoading || isGeneratingPdf}
               className="p-1.5 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-lg border border-slate-200 transition-colors shadow-2xs flex items-center justify-center cursor-pointer disabled:opacity-50"
               title="Recarregar dados da planilha"
             >
@@ -408,30 +419,34 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
         </div>
 
         {/* 2. PRIMEIRA LINHA DE CONTROLES */}
-        {/* [ Exportar CSV (Verde) ] [ Exportar PDF (Azul) ] [ Todos os CTs ] [ Todos os motivos ] [ Todos os meses ] [ □ Em aberto ] */}
+        {/* [ Exportar CSV (Verde) ] [ Exportar PDF (Azul) ] [ Todos os CTs ] [ Todos os meses ] [ Todos os motivos ] [ □ Em aberto ] */}
         <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 print:hidden">
           {/* Botão Exportar CSV (Verde institucional) */}
           <button
             type="button"
             onClick={handleExportCsv}
-            disabled={isLoading || sortedItems.length === 0}
+            disabled={isLoading || isGeneratingPdf || sortedItems.length === 0}
             className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-lg border border-emerald-600 hover:border-emerald-700 transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-            title="Exportar para planilha CSV"
+            title="Exportar registros filtrados para planilha CSV"
           >
             <Download className="w-3.5 h-3.5 text-white" />
             <span>Exportar CSV</span>
           </button>
 
-          {/* Botão Exportar PDF (Azul institucional) */}
+          {/* Botão Exportar PDF Real (Azul institucional) */}
           <button
             type="button"
-            onClick={handlePrint}
-            disabled={isLoading || sortedItems.length === 0}
+            onClick={handleExportPdf}
+            disabled={isLoading || isGeneratingPdf || sortedItems.length === 0}
             className="h-8 px-3 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-semibold text-xs rounded-lg border border-sky-600 hover:border-sky-700 transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-            title="Exportar relatório para PDF / Imprimir"
+            title="Gerar e baixar arquivo PDF com todos os registros filtrados"
           >
-            <Printer className="w-3.5 h-3.5 text-white" />
-            <span>Exportar PDF</span>
+            {isGeneratingPdf ? (
+              <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+            ) : (
+              <FileText className="w-3.5 h-3.5 text-white" />
+            )}
+            <span>{isGeneratingPdf ? 'Gerando PDF...' : 'Exportar PDF'}</span>
           </button>
 
           {/* Select: CTs */}
@@ -448,6 +463,20 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
             ))}
           </select>
 
+          {/* Select: Meses (Invertido com Motivos conforme solicitado) */}
+          <select
+            value={filtroMes}
+            onChange={(e) => setFiltroMes(e.target.value)}
+            className="h-8 px-2.5 bg-white text-slate-700 font-normal text-xs rounded-lg border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-1 focus:ring-slate-300 shadow-2xs outline-none cursor-pointer min-w-[125px]"
+          >
+            <option value="TODOS">Todos os meses</option>
+            {opcoesMeses.map((mes) => (
+              <option key={mes.key} value={mes.key}>
+                {mes.label}
+              </option>
+            ))}
+          </select>
+
           {/* Select: Motivos */}
           <select
             value={filtroMotivo}
@@ -458,20 +487,6 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
             {opcoesMotivos.map((mot) => (
               <option key={mot} value={mot}>
                 {mot}
-              </option>
-            ))}
-          </select>
-
-          {/* Select: Meses */}
-          <select
-            value={filtroMes}
-            onChange={(e) => setFiltroMes(e.target.value)}
-            className="h-8 px-2.5 bg-white text-slate-700 font-normal text-xs rounded-lg border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-1 focus:ring-slate-300 shadow-2xs outline-none cursor-pointer min-w-[125px]"
-          >
-            <option value="TODOS">Todos os meses</option>
-            {opcoesMeses.map((mes) => (
-              <option key={mes.key} value={mes.key}>
-                {mes.label}
               </option>
             ))}
           </select>
