@@ -1,5 +1,12 @@
 import React from 'react';
-import { FileSpreadsheet, LayoutDashboard, ShieldAlert } from 'lucide-react';
+import {
+  FileSpreadsheet,
+  LayoutDashboard,
+  ShieldAlert,
+  ClipboardList,
+  Lock,
+  LockOpen,
+} from 'lucide-react';
 
 export interface SystemModule {
   id: string;
@@ -18,6 +25,14 @@ export const GEAPI_MODULES: SystemModule[] = [
     fullName: 'Solicitação de Manutenção de Vias',
     description: 'Emissão e confecção de formulários de manutenção de vias',
     icon: FileSpreadsheet,
+  },
+  {
+    id: 'controle-oficios',
+    label: 'Controle de Ofícios',
+    lines: ['Controle de', 'Ofícios'],
+    fullName: 'Controle de Ofícios / Lançamentos',
+    description: 'Lançamento operacional de paradas e retornos de equipamentos',
+    icon: ClipboardList,
   },
   {
     id: 'portal-gestao',
@@ -41,11 +56,13 @@ export const GEAPI_MODULES: SystemModule[] = [
 interface NavigationTabsProps {
   activeModuleId?: string;
   onSelectModule?: (moduleId: string) => void;
+  isOficiosAuthorized?: boolean;
 }
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   activeModuleId = 'smv',
   onSelectModule,
+  isOficiosAuthorized = false,
 }) => {
   return (
     <nav
@@ -58,13 +75,14 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
           {GEAPI_MODULES.map((mod) => {
             const isActive = mod.id === activeModuleId;
             const Icon = mod.icon || FileSpreadsheet;
-
             const minWidthClass =
-              mod.id === 'portal-gestao' ? 'min-w-[150px] px-3.5' : 'min-w-[105px] px-4';
+              mod.id === 'portal-gestao' || mod.id === 'controle-oficios'
+                ? 'min-w-[140px] px-3.5'
+                : 'min-w-[105px] px-4';
 
             const labelContent = mod.lines ? (
               <span className="flex flex-col items-center justify-center text-center leading-none">
-                <span className="text-xs sm:text-sm font-medium leading-none">{mod.lines[0]}</span>
+                <span className="text-xs sm:text-sm font-bold leading-none">{mod.lines[0]}</span>
                 <span className="text-xs sm:text-sm font-bold leading-none tracking-wide mt-1">{mod.lines[1]}</span>
               </span>
             ) : (
@@ -107,6 +125,20 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
                 {labelContent}
                 {isActive && (
                   <span className="w-1.5 h-1.5 rounded-full bg-[#F4B400] ml-0.5 shrink-0" />
+                )}
+
+                {/* Indicador de Cadeado no canto inferior direito para Controle de Ofícios */}
+                {mod.id === 'controle-oficios' && (
+                  <span
+                    className="absolute bottom-1 right-1.5 flex items-center justify-center transition-colors pointer-events-none"
+                    title={isOficiosAuthorized ? 'Acesso Liberado nesta sessão' : 'Acesso Restrito'}
+                  >
+                    {isOficiosAuthorized ? (
+                      <LockOpen className="w-3 h-3 text-emerald-600 stroke-[2.5]" />
+                    ) : (
+                      <Lock className="w-3 h-3 text-slate-400 stroke-[2.2]" />
+                    )}
+                  </span>
                 )}
               </button>
             );

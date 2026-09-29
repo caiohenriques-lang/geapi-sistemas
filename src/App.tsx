@@ -3,9 +3,19 @@ import { Header } from './components/Header';
 import { NavigationTabs } from './components/NavigationTabs';
 import { BottomNavigation } from './components/BottomNavigation';
 import { SmvForm } from './components/SmvForm';
+import { ControleOficiosModule } from './components/oficios/ControleOficiosModule';
+import { STORAGE_AUTH_KEY } from './components/oficios/AcessoRestritoCard';
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<string>('smv');
+  const [isOficiosAuthorized, setIsOficiosAuthorized] = useState<boolean>(() => {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        return sessionStorage.getItem(STORAGE_AUTH_KEY) === 'true';
+      }
+    } catch (e) {}
+    return false;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 text-[#2F2F2F] font-sans flex flex-col antialiased">
@@ -16,11 +26,18 @@ export default function App() {
       <NavigationTabs
         activeModuleId={activeModule}
         onSelectModule={(id) => setActiveModule(id)}
+        isOficiosAuthorized={isOficiosAuthorized}
       />
 
       {/* Main Container - Renders Active Module with safe bottom padding for mobile bottom nav */}
       <main className="flex-1 pb-24 sm:pb-16">
         {activeModule === 'smv' && <SmvForm />}
+        {activeModule === 'controle-oficios' && (
+          <ControleOficiosModule
+            isAuthorized={isOficiosAuthorized}
+            onAuthorized={() => setIsOficiosAuthorized(true)}
+          />
+        )}
       </main>
 
       {/* Institutional Minimalist Footer */}
@@ -39,6 +56,7 @@ export default function App() {
       <BottomNavigation
         activeModuleId={activeModule}
         onSelectModule={(id) => setActiveModule(id)}
+        isOficiosAuthorized={isOficiosAuthorized}
       />
     </div>
   );

@@ -1,15 +1,17 @@
 import React from 'react';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, Lock, LockOpen } from 'lucide-react';
 import { GEAPI_MODULES } from './NavigationTabs';
 
 interface BottomNavigationProps {
   activeModuleId?: string;
   onSelectModule?: (moduleId: string) => void;
+  isOficiosAuthorized?: boolean;
 }
 
 export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   activeModuleId = 'smv',
   onSelectModule,
+  isOficiosAuthorized = false,
 }) => {
   return (
     <nav
@@ -31,12 +33,12 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                 isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
               }`}
             >
-              <span className="text-[10px] font-medium leading-none">{mod.lines[0]}</span>
+              <span className="text-[10px] font-bold leading-none">{mod.lines[0]}</span>
               <span className="text-[10.5px] font-bold leading-none tracking-wide mt-0.5">{mod.lines[1]}</span>
             </span>
           ) : (
             <span
-              className={`text-[11.5px] font-bold tracking-tight text-center leading-none ${
+              className={`text-[11px] font-bold tracking-tight text-center leading-none ${
                 isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
               }`}
             >
@@ -77,7 +79,6 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               {isActive && (
                 <span className="absolute top-1.5 right-2 w-1.5 h-1.5 rounded-full bg-[#F4B400]" />
               )}
-
               <div
                 className={`flex items-center justify-center w-5 h-5 mb-0.5 shrink-0 ${
                   isActive ? 'text-[#2F2F2F]' : 'text-slate-600'
@@ -89,8 +90,21 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
                   }`}
                 />
               </div>
-
               {labelNode}
+
+              {/* Indicador de Cadeado no canto inferior direito para Controle de Ofícios no mobile */}
+              {mod.id === 'controle-oficios' && (
+                <span
+                  className="absolute bottom-1 right-1.5 flex items-center justify-center transition-colors pointer-events-none"
+                  title={isOficiosAuthorized ? 'Módulo Liberado' : 'Acesso Restrito'}
+                >
+                  {isOficiosAuthorized ? (
+                    <LockOpen className="w-2.5 h-2.5 text-emerald-600 stroke-[2.5]" />
+                  ) : (
+                    <Lock className="w-2.5 h-2.5 text-slate-400 stroke-[2.2]" />
+                  )}
+                </span>
+              )}
             </button>
           );
         })}
