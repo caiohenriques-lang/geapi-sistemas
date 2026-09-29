@@ -33,6 +33,18 @@ export interface OcorrenciaAberta {
   rowNumber?: number;
 }
 
+export interface HistoricoOficiosItem {
+  rowNumber?: number;
+  ct: string;
+  codigo: string;
+  tipo: string;
+  motivo: string;
+  oficioParada: string;
+  dataParada: string;
+  oficioRetorno: string;
+  dataRetorno: string;
+}
+
 export interface ApiResponse<T = any> {
   ok: boolean;
   data?: T;

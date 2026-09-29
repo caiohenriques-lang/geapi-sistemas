@@ -21,12 +21,14 @@ var SHEET_EQUIPAMENTOS_OFF = 'EQUIPAMENTOS OFF';
 var SHEET_MATRIZ = 'MATRIZ';
 var CACHE_KEY_EQUIPAMENTOS = 'GEAPI_EQUIPAMENTOS_LISTA_CT_2740_2741_2742';
 var CACHE_TTL_EQUIPAMENTOS = 900; // 15 minutos (em segundos)
+var CACHE_KEY_HISTORICO = 'GEAPI_HISTORICO_OFICIOS_CACHE_V1';
+var CACHE_TTL_HISTORICO = 300; // 5 minutos (em segundos)
 var CONTRATOS_PERMITIDOS = ['2740/24', '2741/24', '2742/24'];
 
 // Mapeamento de Colunas (1-based index):
 // A = 1 (CÓDIGO)
 // B = 2
-// C = 3 (Fórmula - NÃO TOCAR)
+// C = 3 (CT / Fórmula - NÃO TOCAR)
 // D = 4 (OF / OFÍCIO DE PARADA)
 // E = 5 (INFORMADO I)
 // F = 6 (DATA PARADA I)
@@ -41,7 +43,7 @@ var CONTRATOS_PERMITIDOS = ['2740/24', '2741/24', '2742/24'];
 // O = 15 (OBSERVAÇÃO)
 // P = 16
 // Q = 17
-// R = 18
+// R = 18 (TIPO)
 // S = 19 (ID_CONTROLE)
 
 /**
@@ -61,6 +63,12 @@ function doGet(e) {
     if (action === 'listarOcorrenciasAbertas') {
       var abertas = getOcorrenciasAbertas();
       return jsonResponse({ ok: true, data: abertas });
+    }
+
+    if (action === 'listarHistorico' || action === 'listarHistoricoOficios') {
+      var forceRefreshHist = (params.refresh === 'true' || params.refresh === '1');
+      var historico = getHistoricoOficios(forceRefreshHist);
+      return jsonResponse({ ok: true, data: historico });
     }
 
     // Ping / status de saúde
@@ -328,6 +336,88 @@ function getOcorrenciasAbertas() {
 }
 
 /**
+ * 2.1. Lê o relatório histórico de todas as paradas e retornos da aba EQUIPAMENTOS OFF.
+ * 
+ * DESEMPENHO E INTEGRIDADE:
+ * - Leitura em bloco com getDisplayValues() e getValues() em uma única chamada.
+ * - Considera somente linhas onde CÓDIGO (Coluna A) esteja preenchido.
+ * - Ignora as milhares de linhas vazias pré-preenchidas com fórmulas.
+ * - CacheService com TTL de 5 minutos (300s).
+ * - Retorna os campos exatos do relatório: ct, codigo, tipo, motivo, oficioParada, dataParada, oficioRetorno, dataRetorno.
+ */
+function getHistoricoOficios(forceRefresh) {
+  var cache = CacheService.getScriptCache();
+
+  // 1. Tenta recuperar do cache se não for forçado
+  if (!forceRefresh) {
+    try {
+      var cached = getFromScriptCache(cache, CACHE_KEY_HISTORICO);
+      if (cached && Array.isArray(cached)) {
+        return cached;
+      }
+    } catch (cacheErr) {}
+  }
+
+  // 2. Lê da planilha oficial
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_EQUIPAMENTOS_OFF);
+  if (!sheet) {
+    throw new Error('Aba "' + SHEET_EQUIPAMENTOS_OFF + '" não encontrada na planilha.');
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return [];
+  }
+
+  // Lê em bloco da linha 2 até a última linha, cobrindo da Coluna A até R (18 colunas)
+  var numCols = Math.max(18, sheet.getLastColumn());
+  var range = sheet.getRange(2, 1, lastRow - 1, numCols);
+  var displayValues = range.getDisplayValues();
+  var values = range.getValues();
+  var tz = ss.getSpreadsheetTimeZone();
+
+  var historico = [];
+
+  for (var i = 0; i < displayValues.length; i++) {
+    var dRow = displayValues[i];
+    var vRow = values[i];
+    var rawCodigo = dRow[0];
+    var codigo = (rawCodigo !== null && rawCodigo !== undefined) ? String(rawCodigo).trim() : '';
+
+    // Considera SOMENTE linhas onde CÓDIGO esteja preenchido
+    if (codigo.length > 0) {
+      var ct = dRow[2] ? String(dRow[2]).trim() : '';
+      var oficioParada = dRow[3] ? String(dRow[3]).trim() : '';
+      var dataParada = formatDateValue(vRow[5], tz) || (dRow[5] ? String(dRow[5]).trim() : '');
+      var motivo = dRow[7] ? String(dRow[7]).trim() : '';
+      var oficioRetorno = dRow[8] ? String(dRow[8]).trim() : '';
+      var dataRetorno = formatDateValue(vRow[10], tz) || (dRow[10] ? String(dRow[10]).trim() : '');
+      var tipo = (dRow.length >= 18 && dRow[17]) ? String(dRow[17]).trim() : '';
+
+      historico.push({
+        rowNumber: i + 2,
+        ct: ct,
+        codigo: codigo,
+        tipo: tipo,
+        motivo: motivo,
+        oficioParada: oficioParada,
+        dataParada: dataParada,
+        oficioRetorno: oficioRetorno,
+        dataRetorno: dataRetorno
+      });
+    }
+  }
+
+  // 3. Salva no CacheService com TTL de 5 minutos (300s)
+  try {
+    putInScriptCache(cache, CACHE_KEY_HISTORICO, historico, CACHE_TTL_HISTORICO);
+  } catch (putErr) {}
+
+  return historico;
+}
+
+/**
  * Validador de formato de ofício (número/ano com conteúdo antes e depois da barra)
  */
 function isValidOficioFormat(str) {
@@ -446,6 +536,13 @@ function handleRegistrarParada(payload) {
     // S: ID_CONTROLE único
     sheet.getRange(targetRow, 19).setValue(idControle);
   }
+
+  // Invalida o cache do relatório histórico para refletir imediatamente novos lançamentos
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove(CACHE_KEY_HISTORICO);
+    cache.remove(CACHE_KEY_HISTORICO + '_chunks');
+  } catch (e) {}
 
   var count = uniqueCodigos.length;
   var successMsg = count > 1
@@ -588,6 +685,13 @@ function handleRegistrarRetorno(payload) {
     var finalObs = existingObs.length > 0 ? (existingObs + '\n' + complemento) : complemento;
     sheet.getRange(targetRowIndex, 15).setValue(finalObs);
   }
+
+  // Invalida o cache do relatório histórico para refletir imediatamente a alteração de status
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove(CACHE_KEY_HISTORICO);
+    cache.remove(CACHE_KEY_HISTORICO + '_chunks');
+  } catch (e) {}
 
   return {
     ok: true,

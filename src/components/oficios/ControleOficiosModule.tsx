@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { RegistrarParadaForm } from './RegistrarParadaForm';
 import { RegistrarRetorno } from './RegistrarRetorno';
+import { HistoricoOficios } from './HistoricoOficios';
 import { AcessoRestritoCard, STORAGE_AUTH_KEY } from './AcessoRestritoCard';
 import { fetchEquipamentosList, isOficiosApiConfigured } from '../../services/oficiosService';
 
@@ -58,6 +59,12 @@ export const ControleOficiosModule: React.FC<ControleOficiosModuleProps> = ({
   };
 
   const [viewMode, setViewMode] = useState<ViewMode>('MENU');
+  const [historyRefreshKey, setHistoryRefreshKey] = useState<number>(0);
+
+  const handleReturnToMenu = () => {
+    setViewMode('MENU');
+    setHistoryRefreshKey((k) => k + 1);
+  };
 
   // Pré-aquece o cache de equipamentos em background APENAS após a liberação da autorização
   useEffect(() => {
@@ -87,7 +94,7 @@ export const ControleOficiosModule: React.FC<ControleOficiosModuleProps> = ({
         {viewMode !== 'MENU' && (
           <button
             type="button"
-            onClick={() => setViewMode('MENU')}
+            onClick={handleReturnToMenu}
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer"
           >
             Menu Principal
@@ -97,7 +104,7 @@ export const ControleOficiosModule: React.FC<ControleOficiosModuleProps> = ({
 
       {/* Main Content Area */}
       {viewMode === 'MENU' && (
-        <div className="space-y-6 animate-fadeIn">
+        <div className="space-y-6 sm:space-y-8 animate-fadeIn">
           {/* Action Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* Card 1: REGISTRAR PARADA */}
@@ -148,15 +155,18 @@ export const ControleOficiosModule: React.FC<ControleOficiosModuleProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Relatório Histórico de Parada e Retorno de Equipamentos */}
+          <HistoricoOficios refreshTrigger={historyRefreshKey} />
         </div>
       )}
 
       {viewMode === 'PARADA' && (
-        <RegistrarParadaForm onBack={() => setViewMode('MENU')} />
+        <RegistrarParadaForm onBack={handleReturnToMenu} />
       )}
 
       {viewMode === 'RETORNO' && (
-        <RegistrarRetorno onBack={() => setViewMode('MENU')} />
+        <RegistrarRetorno onBack={handleReturnToMenu} />
       )}
     </div>
   );
