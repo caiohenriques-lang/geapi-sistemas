@@ -5,7 +5,7 @@
  * 
  * Este script deve ser vinculado à planilha operacional oficial da PBH / GEAPI.
  * Ele fornece os endpoints REST (Web App) para:
- * 1. listarEquipamentos() -> Lê MATRIZ!D2:D6152 (deduplica e ordena)
+ * 1. listarEquipamentos() -> Lê MATRIZ!D2:Z6152 filtrando contratos 2740/24, 2741/24 e 2742/24 (deduplica e ordena)
  * 2. listarOcorrenciasAbertas() -> Lê EQUIPAMENTOS OFF (col A preenchida e col I vazia)
  * 3. registrarParada() -> Escreve nova linha seletivamente em EQUIPAMENTOS OFF
  * 4. registrarRetorno() -> Localiza a ocorrência e complementa a mesma linha
@@ -19,8 +19,9 @@
 
 var SHEET_EQUIPAMENTOS_OFF = 'EQUIPAMENTOS OFF';
 var SHEET_MATRIZ = 'MATRIZ';
-var CACHE_KEY_EQUIPAMENTOS = 'GEAPI_EQUIPAMENTOS_LISTA';
+var CACHE_KEY_EQUIPAMENTOS = 'GEAPI_EQUIPAMENTOS_LISTA_CT_2740_2741_2742';
 var CACHE_TTL_EQUIPAMENTOS = 900; // 15 minutos (em segundos)
+var CONTRATOS_PERMITIDOS = ['2740/24', '2741/24', '2742/24'];
 
 // Mapeamento de Colunas (1-based index):
 // A = 1 (CÓDIGO)
@@ -141,17 +142,29 @@ function doPost(e) {
 }
 
 /**
- * 1. Lê a lista de códigos de equipamentos da aba MATRIZ!D2:D6152 com cache
+ * 1. Lê a lista de códigos de equipamentos da aba MATRIZ!D2:Z6152 filtrando
+ * EXCLUSIVAMENTE os contratos 2740/24, 2741/24 e 2742/24 com cache de alta performance.
  * 
  * OTIMIZAÇÃO:
  * - CacheService.getScriptCache() armazena a lista processada (TTL 15 min / 900s).
- * - Leitura da planilha é realizada em UMA ÚNICA operação de range: MATRIZ!D2:D6152.
+ * - Chave de cache dedicada: GEAPI_EQUIPAMENTOS_LISTA_CT_2740_2741_2742.
+ * - Leitura da planilha é realizada em UMA ÚNICA operação de range: MATRIZ!D2:Z6152.
  * - Utiliza getDisplayValues() em uma única chamada (evita leituras célula a célula).
- * - Processamento eficiente: ignora vazios, aplica trim, elimina duplicados e ordena alfanumericamente.
+ * - Para cada linha:
+ *   - CÓDIGO = primeira coluna do range D:Z (Coluna D)
+ *   - CT = última coluna do range D:Z (Coluna Z)
+ * - Filtra estritamente os contratos homologados: 2740/24, 2741/24 e 2742/24.
+ * - Processamento eficiente em memória: ignora vazios, aplica trim, elimina duplicados e ordena alfanumericamente.
  * - Suporta divisão automática em chunks caso o tamanho total do JSON atinja o limite do CacheService.
  */
 function getListaEquipamentos(forceRefresh) {
   var cache = CacheService.getScriptCache();
+
+  // Invalida silenciosamente o cache antigo legado para não reutilizar dados sem filtro
+  try {
+    cache.remove('GEAPI_EQUIPAMENTOS_LISTA');
+    cache.remove('GEAPI_EQUIPAMENTOS_LISTA_chunks');
+  } catch (cleanLegacyErr) {}
 
   // 1. Tenta recuperar do cache se não for forçado
   if (!forceRefresh) {
@@ -165,22 +178,34 @@ function getListaEquipamentos(forceRefresh) {
     }
   }
 
-  // 2. Não está no cache: lê exclusivamente da aba oficial MATRIZ!D2:D6152
+  // 2. Não está no cache: lê exclusivamente da aba oficial MATRIZ!D2:Z6152
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_MATRIZ);
   if (!sheet) {
     throw new Error('Aba "' + SHEET_MATRIZ + '" não encontrada na planilha.');
   }
 
-  // UMA ÚNICA chamada de range e getDisplayValues()
-  var range = sheet.getRange('D2:D6152');
+  // UMA ÚNICA chamada de range e getDisplayValues() cobrindo da Coluna D à Coluna Z
+  var range = sheet.getRange('D2:Z6152');
   var displayValues = range.getDisplayValues();
   var uniqueCodes = {};
 
+  var allowedContratosMap = {
+    '2740/24': true,
+    '2741/24': true,
+    '2742/24': true
+  };
+
   for (var i = 0; i < displayValues.length; i++) {
-    var raw = displayValues[i][0];
-    if (raw !== null && raw !== undefined) {
-      var code = String(raw).trim();
+    var row = displayValues[i];
+    var rawCode = row[0]; // Primeira coluna do range (Coluna D = CÓDIGO)
+    var rawCt = row[row.length - 1]; // Última coluna do range (Coluna Z = CONTRATO / CT)
+
+    var ct = (rawCt !== null && rawCt !== undefined) ? String(rawCt).trim() : '';
+
+    // Manter somente registros cujo CT seja exatamente: 2740/24, 2741/24 ou 2742/24
+    if (allowedContratosMap[ct]) {
+      var code = (rawCode !== null && rawCode !== undefined) ? String(rawCode).trim() : '';
       if (code.length > 0) {
         uniqueCodes[code] = true;
       }

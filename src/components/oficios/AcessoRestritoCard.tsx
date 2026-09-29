@@ -13,6 +13,17 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Se já houver autorização prévia nesta sessão do navegador, desbloqueia imediatamente
+  React.useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        if (sessionStorage.getItem(STORAGE_AUTH_KEY) === 'true') {
+          onAuthorized();
+        }
+      }
+    } catch (e) {}
+  }, [onAuthorized]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -35,7 +46,19 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
   return (
     <div className="max-w-md mx-auto py-8 sm:py-14 px-4 animate-fadeIn">
       <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} method="post" action="#" className="space-y-6">
+          {/* Identificador auxiliar oculto para navegadores e gerenciadores de senhas (ex: Chrome, Edge, Safari, 1Password) */}
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            value="geapi-operacional"
+            readOnly
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+
           {/* Header do Card */}
           <div className="text-center space-y-2">
             <div className="w-12 h-12 mx-auto rounded-xl bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center shadow-2xs">
@@ -73,7 +96,9 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
             <div className="relative">
               <input
                 id="senha-controle-oficios"
+                name="geapi-controle-oficios-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 value={senha}
                 onChange={(e) => {
                   setSenha(e.target.value);
@@ -81,6 +106,7 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
                 }}
                 placeholder="Digite a senha de autorização"
                 autoFocus
+                required
                 className={`w-full pl-3.5 pr-10 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-xl border shadow-2xs transition-all outline-none ${
                   error
                     ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'

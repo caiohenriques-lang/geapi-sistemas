@@ -69,7 +69,7 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
 
   const isVandalismo = motivo === 'VANDALISMO/FURTO';
 
-  // Carrega lista oficial de equipamentos de MATRIZ!D2:D6152 e ocorrências abertas
+  // Carrega lista oficial de equipamentos de MATRIZ!D2:Z6152 (Contratos 2740/24, 2741/24 e 2742/24) e ocorrências abertas
   useEffect(() => {
     let isMounted = true;
 
@@ -419,8 +419,8 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
               disabled={isLoadingEquipamentos || isSubmitting || !!equipamentosError}
               helpText={
                 equipamentosError
-                  ? 'Aguardando configuração de VITE_OFICIOS_API_URL para carregar MATRIZ!D2:D6152.'
-                  : 'Pesquisa por CONTÉM. Selecione um ou mais equipamentos para a mesma parada.'
+                  ? 'Aguardando configuração de VITE_OFICIOS_API_URL para carregar MATRIZ!D2:Z6152.'
+                  : 'Pesquisa por CONTÉM. Selecione um ou mais equipamentos dos contratos 2740/24, 2741/24 e 2742/24.'
               }
               error={errors.codigo}
             />
@@ -511,8 +511,15 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
               type="date"
               value={informadoI}
               onChange={(e) => setInformadoI(e.target.value)}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.();
+                } catch {
+                  // Fallback nativo silencioso se não suportado ou bloqueado
+                }
+              }}
               disabled={isSubmitting}
-              className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none ${
+              className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none cursor-pointer ${
                 errors.informadoI
                   ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'
                   : 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'
@@ -538,8 +545,15 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
               type="date"
               value={dataParadaI}
               onChange={(e) => setDataParadaI(e.target.value)}
+              onClick={(e) => {
+                try {
+                  e.currentTarget.showPicker?.();
+                } catch {
+                  // Fallback nativo silencioso se não suportado ou bloqueado
+                }
+              }}
               disabled={isSubmitting}
-              className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none ${
+              className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none cursor-pointer ${
                 errors.dataParadaI
                   ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'
                   : 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'

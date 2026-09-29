@@ -19,19 +19,40 @@ export const ControleOficiosModule: React.FC<ControleOficiosModuleProps> = ({
   isAuthorized: propIsAuthorized,
   onAuthorized: propOnAuthorized,
 }) => {
-  // Verifica se já existe autorização ativa nesta sessão do navegador
-  const [internalAuthorized, setInternalAuthorized] = useState<boolean>(() => {
+  // Helper para verificar autorização persistente no sessionStorage
+  const getSessionAuth = (): boolean => {
     try {
       if (typeof window !== 'undefined' && window.sessionStorage) {
         return sessionStorage.getItem(STORAGE_AUTH_KEY) === 'true';
       }
     } catch (e) {}
     return false;
-  });
+  };
 
-  const isAuthorized = propIsAuthorized !== undefined ? propIsAuthorized : internalAuthorized;
+  // Verifica se já existe autorização ativa nesta sessão do navegador
+  const [internalAuthorized, setInternalAuthorized] = useState<boolean>(() => getSessionAuth());
+
+  // Sempre considera autorizado se a prop for true, se o estado interno for true OU se o sessionStorage tiver 'true'
+  const isAuthorized = Boolean(propIsAuthorized || internalAuthorized || getSessionAuth());
+
+  // Sincroniza estado de autorização do módulo com o componente pai (App)
+  useEffect(() => {
+    if (getSessionAuth()) {
+      if (!internalAuthorized) {
+        setInternalAuthorized(true);
+      }
+      if (!propIsAuthorized) {
+        propOnAuthorized?.();
+      }
+    }
+  }, [internalAuthorized, propIsAuthorized, propOnAuthorized]);
 
   const handleAuthorized = () => {
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.setItem(STORAGE_AUTH_KEY, 'true');
+      }
+    } catch (e) {}
     setInternalAuthorized(true);
     propOnAuthorized?.();
   };
@@ -93,7 +114,7 @@ export const ControleOficiosModule: React.FC<ControleOficiosModuleProps> = ({
                     Registrar Parada
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Cria ocorrência operacional com seleção de um ou múltiplos equipamentos, ofício, data de parada, motivo e horário de vandalismo.
+                    Cadastrar parada de um equipamento.
                   </p>
                 </div>
               </div>
@@ -117,7 +138,7 @@ export const ControleOficiosModule: React.FC<ControleOficiosModuleProps> = ({
                     Registrar Retorno
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Localiza uma ocorrência em aberto e complementa com ofício de retorno, data de retorno e observações adicionais.
+                    Localizar um equipamento parado e cadastrar seu retorno.
                   </p>
                 </div>
               </div>

@@ -395,8 +395,15 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
                   type="date"
                   value={informadoF}
                   onChange={(e) => setInformadoF(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      e.currentTarget.showPicker?.();
+                    } catch {
+                      // Fallback nativo silencioso se não suportado ou bloqueado
+                    }
+                  }}
                   disabled={isSubmitting}
-                  className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none ${
+                  className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none cursor-pointer ${
                     errors.informadoF
                       ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'
                       : 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'
@@ -422,8 +429,15 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
                   type="date"
                   value={retornoF}
                   onChange={(e) => setRetornoF(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      e.currentTarget.showPicker?.();
+                    } catch {
+                      // Fallback nativo silencioso se não suportado ou bloqueado
+                    }
+                  }}
                   disabled={isSubmitting}
-                  className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none ${
+                  className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none cursor-pointer ${
                     errors.retornoF
                       ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'
                       : 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'

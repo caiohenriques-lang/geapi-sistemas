@@ -7,7 +7,8 @@ import {
 
 const OFICIOS_API_URL = import.meta.env.VITE_OFICIOS_API_URL || '';
 
-const SESSION_CACHE_KEY = 'geapi_oficios_equipamentos_cache_v1';
+const SESSION_CACHE_KEY = 'geapi_oficios_equipamentos_cache_ct_2740_2741_2742_v1';
+const LEGACY_SESSION_CACHE_KEY = 'geapi_oficios_equipamentos_cache_v1';
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutos de TTL (sessão operacional)
 
 interface CachedEquipamentosSession {
@@ -33,6 +34,9 @@ function getCachedEquipamentos(): string[] | null {
   // 2. Tenta sessionStorage (reutiliza durante a sessão do navegador)
   try {
     if (typeof window !== 'undefined' && window.sessionStorage) {
+      // Invalida cache legado sem filtro se existir
+      sessionStorage.removeItem(LEGACY_SESSION_CACHE_KEY);
+
       const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
       if (raw) {
         const parsed: CachedEquipamentosSession = JSON.parse(raw);
@@ -83,6 +87,7 @@ export function clearEquipamentosCache(): void {
   try {
     if (typeof window !== 'undefined' && window.sessionStorage) {
       sessionStorage.removeItem(SESSION_CACHE_KEY);
+      sessionStorage.removeItem(LEGACY_SESSION_CACHE_KEY);
     }
   } catch (e) {}
 }
@@ -102,7 +107,8 @@ export function getOficiosApiUrl(): string {
 }
 
 /**
- * 1. Busca a lista oficial de equipamentos EXCLUSIVAMENTE da aba MATRIZ!D2:D6152 via Apps Script.
+ * 1. Busca a lista oficial de equipamentos EXCLUSIVAMENTE da aba MATRIZ!D2:Z6152
+ * filtrados por contrato (2740/24, 2741/24 e 2742/24) via Google Apps Script.
  * Sem qualquer fallback fictício ou base alternativa.
  *
  * Utiliza cache em memória + sessionStorage com TTL curto de 15 minutos para garantir
@@ -146,7 +152,7 @@ export async function fetchEquipamentosList(forceRefresh: boolean = false): Prom
       return resJson.data;
     } catch (err: any) {
       equipamentosPromise = null;
-      console.error('Erro ao buscar equipamentos de MATRIZ!D2:D6152:', err);
+      console.error('Erro ao buscar equipamentos de MATRIZ!D2:Z6152 (Contratos 2740/24, 2741/24, 2742/24):', err);
       throw new Error(err.message || 'Não foi possível carregar a lista de equipamentos.');
     }
   })();

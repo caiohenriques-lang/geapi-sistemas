@@ -1,7 +1,11 @@
 import React from 'react';
 import { useHeaderScroll } from '../hooks/useHeaderScroll';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onGoHome?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onGoHome }) => {
   const isVisible = useHeaderScroll(8);
 
   return (
@@ -21,10 +25,25 @@ export const Header: React.FC = () => {
           />
         </div>
 
-        {/* Identidade da Plataforma: Logo à esquerda do título no mobile e desktop */}
-        <div className="order-2 sm:order-1 flex flex-row items-center gap-3 sm:gap-4 text-left w-full sm:w-auto">
+        {/* Identidade da Plataforma: Logo à esquerda do título no mobile e desktop (clicável para voltar à Home) */}
+        <div
+          onClick={onGoHome}
+          role={onGoHome ? 'button' : undefined}
+          tabIndex={onGoHome ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (onGoHome && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              onGoHome();
+            }
+          }}
+          aria-label="Voltar para a página inicial"
+          title={onGoHome ? 'Voltar para a página inicial do GEAPI - Sistemas' : undefined}
+          className={`order-2 sm:order-1 flex flex-row items-center gap-3 sm:gap-4 text-left w-full sm:w-auto group rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 p-0.5 ${
+            onGoHome ? 'cursor-pointer hover:opacity-90' : ''
+          }`}
+        >
           {/* Logo do Sistema GEAPI (à esquerda) */}
-          <div className="shrink-0 flex items-center justify-center">
+          <div className="shrink-0 flex items-center justify-center group-hover:scale-[1.02] transition-transform">
             <img
               src="/brand/logo_geapi_symbol.svg"
               alt="GEAPI - Sistemas"
@@ -34,7 +53,7 @@ export const Header: React.FC = () => {
 
           {/* Textos da Plataforma */}
           <div className="space-y-0.5 min-w-0">
-            <h1 className="text-lg min-[390px]:text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[#2F2F2F] leading-tight">
+            <h1 className="text-lg min-[390px]:text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[#2F2F2F] leading-tight group-hover:text-slate-900 transition-colors">
               GEAPI - Sistemas
             </h1>
             <p className="text-[11px] min-[390px]:text-xs sm:text-sm text-[#454545] font-medium leading-tight">
