@@ -2,24 +2,21 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
-  Calendar,
   CheckCircle2,
   Clock,
   FileCheck2,
-  Info,
   Loader2,
   RefreshCw,
   Search,
   ShieldCheck,
-  X,
 } from 'lucide-react';
 import {
   OcorrenciaAberta,
   OcorrenciaRetornoPayload,
+  OPCOES_MEDICAO,
 } from '../../types/controleOficios';
 import {
   fetchOcorrenciasAbertas,
-  isOficiosApiConfigured,
   registrarRetorno,
 } from '../../services/oficiosService';
 import { formatDateBR } from '../../utils/dateUtils';
@@ -33,6 +30,7 @@ interface SuccessClosedSummary {
   codigo: string;
   oficioRetorno: string;
   retornoF: string;
+  medicao?: string;
 }
 
 export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) => {
@@ -47,6 +45,7 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
   const [oficioRetorno, setOficioRetorno] = useState('');
   const [informadoF, setInformadoF] = useState('');
   const [retornoF, setRetornoF] = useState('');
+  const [medicao, setMedicao] = useState<string>('');
   const [complementoObservacao, setComplementoObservacao] = useState('');
 
   // Form Submission & Confirmation State
@@ -94,6 +93,7 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
     setOficioRetorno('');
     setInformadoF('');
     setRetornoF('');
+    setMedicao('');
     setComplementoObservacao('');
     setFormError(null);
     setErrors({});
@@ -147,6 +147,7 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
       oficioRetorno: oficioRetorno.trim(),
       informadoF: informadoF.trim(),
       retornoF: retornoF.trim(),
+      ...(medicao.trim() ? { medicao: medicao.trim() } : {}),
       ...(complementoObservacao.trim()
         ? { complementoObservacao: complementoObservacao.trim() }
         : {}),
@@ -161,6 +162,7 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
           codigo: selectedOcorrencia.codigo,
           oficioRetorno: oficioRetorno.trim(),
           retornoF: retornoF.trim(),
+          ...(medicao.trim() ? { medicao: medicao.trim() } : {}),
         });
         setSelectedOcorrencia(null);
         // Atualiza a lista em segundo plano para que a ocorrência encerrada desapareça
@@ -214,10 +216,16 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
               <span className="text-slate-500 font-medium">Ofício de Retorno:</span>
               <span className="font-bold text-slate-900">{successClosedData.oficioRetorno}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between border-b border-slate-200 pb-2">
               <span className="text-slate-500 font-medium">Data de Retorno:</span>
               <span className="font-semibold text-slate-900">{formatDateBR(successClosedData.retornoF)}</span>
             </div>
+            {successClosedData.medicao && (
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Tipo de Desconto na Medição:</span>
+                <span className="font-bold text-slate-900">{successClosedData.medicao}</span>
+              </div>
+            )}
           </div>
 
           <div className="pt-4 w-full">
@@ -350,7 +358,7 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Campo: NÚMERO DO OFÍCIO DE RETORNO */}
+              {/* 1. NÚMERO DO OFÍCIO DE RETORNO * */}
               <div>
                 <label
                   htmlFor="campo-oficio-retorno"
@@ -382,7 +390,7 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
                 )}
               </div>
 
-              {/* Campo: DATA DO OFÍCIO */}
+              {/* 2. DATA DO OFÍCIO * */}
               <div>
                 <label
                   htmlFor="campo-informado-f"
@@ -416,7 +424,7 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
                 )}
               </div>
 
-              {/* Campo: DATA DO RETORNO */}
+              {/* 3. DATA DO RETORNO * */}
               <div>
                 <label
                   htmlFor="campo-retorno-f"
@@ -450,7 +458,39 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
                 )}
               </div>
 
-              {/* COMPLEMENTAR OBSERVAÇÃO (OPCIONAL) */}
+              {/* 4. TIPO DE DESCONTO NA MEDIÇÃO (DropdownList opcional: MANUAL, PARCIAL, SISTEMA TIVIC) */}
+              <div className="sm:col-span-1">
+                <label
+                  htmlFor="campo-medicao"
+                  className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
+                >
+                  TIPO DE DESCONTO NA MEDIÇÃO
+                </label>
+                <select
+                  id="campo-medicao"
+                  value={medicao}
+                  onChange={(e) => setMedicao(e.target.value)}
+                  disabled={isSubmitting}
+                  className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100 shadow-2xs transition-all outline-none cursor-pointer ${
+                    isSubmitting ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <option value="">SELECIONE A MEDIÇÃO</option>
+                  {OPCOES_MEDICAO.map((op) => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Opcional. Selecione a medição correspondente.
+                </p>
+              </div>
+
+              {/* Espaço em branco para manter alinhamento harmônico no grid de 3 colunas */}
+              <div className="hidden sm:block sm:col-span-2" />
+
+              {/* 5. COMPLEMENTAR OBSERVAÇÃO (OPCIONAL) */}
               <div className="sm:col-span-3">
                 <label
                   htmlFor="campo-complemento-obs"
@@ -480,24 +520,24 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
               type="button"
               onClick={handleBackToList}
               disabled={isSubmitting}
-              className="w-full sm:w-auto px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm rounded-xl border border-slate-200 hover:border-slate-300 transition-all cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2.5 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 font-bold text-xs rounded-xl border border-slate-300 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
             >
-              Voltar à Lista
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full sm:w-auto px-6 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-6 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Registrando Retorno...
+                  <span>Salvando Retorno...</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  Salvar Retorno
+                  <FileCheck2 className="w-4 h-4" />
+                  <span>Salvar Retorno</span>
                 </>
               )}
             </button>
@@ -511,25 +551,25 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
   // VIEW 1: LISTA DE OCORRÊNCIAS EM ABERTO
   // ==========================================
   return (
-    <div className="max-w-4xl mx-auto space-y-4 animate-fadeIn">
-      {/* Top Header Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-6 animate-fadeIn">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onBack}
             className="p-2 -ml-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-            title="Voltar ao menu de ações"
+            title="Voltar ao menu principal"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <FileCheck2 className="w-5 h-5 text-emerald-600" />
               Ocorrências em Aberto
             </h2>
-            <p className="text-xs text-slate-500">
-              Selecione uma ocorrência para registrar o ofício e data de retorno
+            <p className="text-xs text-slate-500 mt-0.5">
+              Selecione um equipamento que está com a parada ativa para registrar o retorno oficial.
             </p>
           </div>
         </div>
@@ -538,122 +578,115 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
           type="button"
           onClick={loadOcorrencias}
           disabled={isLoadingList}
-          className="self-start sm:self-auto px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl border border-slate-200 transition-all flex items-center gap-2 cursor-pointer"
+          className="self-end sm:self-auto px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoadingList ? 'animate-spin' : ''}`} />
-          Atualizar Lista
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoadingList ? 'animate-spin text-slate-800' : ''}`} />
+          <span>Atualizar</span>
         </button>
       </div>
 
-      {!isOficiosApiConfigured() && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-xs text-amber-800">
-          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <span className="font-bold block mb-0.5">Integração com Controle de Ofícios ainda não configurada.</span>
-            A variável pública <code className="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-900">VITE_OFICIOS_API_URL</code> deve conter a URL do Web App do Google Apps Script publicado para sincronizar com a planilha real.
-          </div>
-        </div>
-      )}
-
-      {listError && (
-        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-xs text-rose-800">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-          <div>
-            <span className="font-bold block mb-0.5">Erro ao consultar ocorrências:</span>
-            {listError}
-          </div>
-        </div>
-      )}
-
-      {/* Search Input Filter (Preservado) */}
+      {/* Busca rápida */}
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-          <Search className="w-4 h-4" />
-        </div>
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Pesquisar por Código, Ofício, Data ou Motivo..."
-          className="w-full pl-10 pr-10 py-3 bg-white text-slate-900 font-medium text-sm rounded-xl border border-slate-200 shadow-2xs focus:border-slate-600 focus:ring-2 focus:ring-slate-100 transition-all outline-none"
+          placeholder="Filtrar ocorrência por código, ofício, data ou motivo..."
+          className="w-full pl-9 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-100 outline-none transition-all"
         />
-        {searchTerm && (
-          <button
-            type="button"
-            onClick={() => setSearchTerm('')}
-            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-            title="Limpar busca"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        <div className="absolute left-3 top-3 text-slate-400">
+          <Search className="w-4 h-4" />
+        </div>
       </div>
 
-      {/* Occurrences List Cards */}
+      {/* Mensagem de Erro da Lista */}
+      {listError && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-xs text-rose-800">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-bold block mb-0.5">Erro ao carregar dados:</span>
+            {listError}
+          </div>
+          <button
+            type="button"
+            onClick={loadOcorrencias}
+            className="text-xs font-bold text-rose-700 hover:underline cursor-pointer"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {/* Tabela de Ocorrências em Aberto */}
       {isLoadingList ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400 mx-auto" />
-          <p className="text-sm font-semibold text-slate-700">
-            Consultando ocorrências em aberto...
+        <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-500">
+          <Loader2 className="w-6 h-6 animate-spin text-slate-700" />
+          <p className="text-xs font-semibold tracking-wide uppercase">
+            Consultando ocorrências em aberto na planilha...
           </p>
         </div>
       ) : filteredOcorrencias.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-2">
-          <FileCheck2 className="w-10 h-10 text-slate-300 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">
-            {searchTerm ? 'Nenhuma ocorrência encontrada para esta busca.' : 'Nenhuma ocorrência em aberto no momento.'}
+        <div className="py-12 text-center space-y-2 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+          <ShieldCheck className="w-8 h-8 mx-auto text-slate-400" />
+          <h3 className="text-sm font-bold text-slate-800">
+            Nenhuma ocorrência em aberto encontrada
           </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
             {searchTerm
-              ? 'Tente buscar por outro código de equipamento ou número de ofício.'
-              : 'Todos os equipamentos paralisados já possuem retorno registrado.'}
+              ? 'Nenhuma ocorrência corresponde ao termo pesquisado.'
+              : 'Todos os equipamentos possuem retorno registrado ou não há paradas ativas no momento.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {filteredOcorrencias.map((oc, idx) => (
-            <div
-              key={oc.idControle || `${oc.codigo}-${oc.oficioParada}-${oc.dataParadaI}-${idx}`}
-              onClick={() => handleSelectOcorrencia(oc)}
-              className="bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-emerald-300 rounded-xl p-4.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-sm text-slate-900 bg-slate-100 group-hover:bg-emerald-50 group-hover:text-emerald-900 px-2.5 py-1 rounded-lg transition-colors uppercase">
-                    {oc.codigo}
-                  </span>
-                  <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
-                    Parada Aberta
-                  </span>
-                </div>
-
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span className="text-slate-400">Ofício Parada:</span>
-                    <span className="font-semibold text-slate-800">{oc.oficioParada || '—'}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span className="text-slate-400">Data Parada:</span>
-                    <span className="font-medium text-slate-800 flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      {formatDateBR(oc.dataParadaI) || '—'}
-                    </span>
-                  </div>
-                  <div className="pt-1 text-slate-700">
-                    <span className="text-slate-400 block text-[11px] mb-0.5">Motivo:</span>
-                    <span className="font-medium bg-slate-50 p-1.5 rounded block text-slate-800 line-clamp-2">
+        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                  <th className="py-3 px-4">Código</th>
+                  <th className="py-3 px-4">Ofício de Parada</th>
+                  <th className="py-3 px-4">Data Parada</th>
+                  <th className="py-3 px-4">Data Ofício</th>
+                  <th className="py-3 px-4">Motivo</th>
+                  <th className="py-3 px-4 text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-800">
+                {filteredOcorrencias.map((oc, index) => (
+                  <tr
+                    key={oc.idControle || `${oc.codigo}-${oc.oficioParada}-${index}`}
+                    className="hover:bg-slate-50/80 transition-colors"
+                  >
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900 uppercase">
+                      {oc.codigo}
+                    </td>
+                    <td className="py-3 px-4 font-semibold text-slate-800">
+                      {oc.oficioParada}
+                    </td>
+                    <td className="py-3 px-4 text-slate-700 whitespace-nowrap">
+                      {formatDateBR(oc.dataParadaI)}
+                    </td>
+                    <td className="py-3 px-4 text-slate-700 whitespace-nowrap">
+                      {formatDateBR(oc.informadoI)}
+                    </td>
+                    <td className="py-3 px-4 text-slate-700 max-w-[220px] truncate" title={oc.motivo}>
                       {oc.motivo}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-emerald-700 font-bold group-hover:text-emerald-800">
-                <span>Registrar Retorno &rarr;</span>
-              </div>
-            </div>
-          ))}
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectOcorrencia(oc)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-lg transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <FileCheck2 className="w-3.5 h-3.5" />
+                        <span>Dar Retorno</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

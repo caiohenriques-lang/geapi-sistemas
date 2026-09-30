@@ -10,6 +10,14 @@ export interface OcorrenciaParadaPayload {
   idControle?: string;
 }
 
+export const OPCOES_MEDICAO = [
+  'MANUAL',
+  'PARCIAL',
+  'SISTEMA TIVIC',
+] as const;
+
+export type TipoMedicao = typeof OPCOES_MEDICAO[number];
+
 export interface OcorrenciaRetornoPayload {
   idControle?: string;
   codigo: string;
@@ -18,6 +26,7 @@ export interface OcorrenciaRetornoPayload {
   oficioRetorno: string;
   informadoF: string;
   retornoF: string;
+  medicao?: TipoMedicao | string;
   complementoObservacao?: string;
 }
 

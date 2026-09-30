@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Lock, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 
 interface AcessoRestritoCardProps {
@@ -7,14 +7,17 @@ interface AcessoRestritoCardProps {
 
 export const SENHA_CORRETA = 'GEAPIFE-CONTROLE';
 export const STORAGE_AUTH_KEY = 'geapi_controle_oficios_authorized';
+export const USERNAME_DEFAULT = 'geapi-operacional';
 
 export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthorized }) => {
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Se já houver autorização prévia nesta sessão do navegador, desbloqueia imediatamente
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       if (typeof window !== 'undefined' && window.sessionStorage) {
         if (sessionStorage.getItem(STORAGE_AUTH_KEY) === 'true') {
@@ -24,19 +27,55 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
     } catch (e) {}
   }, [onAuthorized]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Sincroniza com autofill nativo do navegador caso o campo seja preenchido sem disparar onChange
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (passwordInputRef.current && passwordInputRef.current.value && !senha) {
+        setSenha(passwordInputRef.current.value);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [senha]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
+    // Obtém o valor real diretamente do DOM / FormData para garantir suporte a autofill
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const formPassword = (formData.get('password') as string) || '';
+    const domPassword = passwordInputRef.current?.value || '';
+    const valorSenha = (formPassword || domPassword || senha || '').trim();
+
     // Validação estrita por correspondência exata
-    if (senha.trim() === SENHA_CORRETA) {
+    if (valorSenha === SENHA_CORRETA) {
       try {
         if (typeof window !== 'undefined' && window.sessionStorage) {
           sessionStorage.setItem(STORAGE_AUTH_KEY, 'true');
         }
       } catch (err) {
-        // sessionStorage pode estar indisponível em casos extremos, mas prossegue
+        // sessionStorage pode estar indisponível em casos extremos, prossegue
       }
+
+      // Notifica o gerenciador nativo de credenciais do navegador (Chrome, Edge, Safari) para SPAs
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          'credentials' in navigator &&
+          (window as any).PasswordCredential
+        ) {
+          const cred = new (window as any).PasswordCredential({
+            id: USERNAME_DEFAULT,
+            password: SENHA_CORRETA,
+            name: 'Controle de Ofícios - GEAPI',
+          });
+          navigator.credentials.store(cred).catch(() => {});
+        }
+      } catch (credErr) {
+        // Fallback silencioso caso a API não esteja disponível ou contexto restrinja
+      }
+
       onAuthorized();
     } else {
       setError('Senha de autorização inválida.');
@@ -46,17 +85,35 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
   return (
     <div className="max-w-md mx-auto py-8 sm:py-14 px-4 animate-fadeIn">
       <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs">
-        <form onSubmit={handleSubmit} method="post" action="#" className="space-y-6">
-          {/* Identificador auxiliar oculto para navegadores e gerenciadores de senhas (ex: Chrome, Edge, Safari, 1Password) */}
+        <form
+          ref={formRef}
+          id="login-controle-oficios-form"
+          name="login-controle-oficios-form"
+          onSubmit={handleSubmit}
+          method="POST"
+          action="#"
+          className="space-y-6"
+        >
+          {/* Identificador auxiliar estruturado para detecção por gerenciadores de senhas (Chrome, Edge, Safari, 1Password) */}
           <input
             type="text"
+            id="username"
             name="username"
             autoComplete="username"
-            value="geapi-operacional"
-            readOnly
-            className="sr-only"
+            defaultValue={USERNAME_DEFAULT}
+            style={{
+              position: 'absolute',
+              width: '1px',
+              height: '1px',
+              margin: '-1px',
+              padding: '0',
+              overflow: 'hidden',
+              clip: 'rect(0, 0, 0, 0)',
+              border: '0',
+              opacity: 0.001,
+              pointerEvents: 'none',
+            }}
             tabIndex={-1}
-            aria-hidden="true"
           />
 
           {/* Header do Card */}
@@ -85,23 +142,31 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
             </div>
           )}
 
-          {/* Campo da Senha */}
+          {/* Campo da Senha com identificadores padronizados para salvamento/preenchimento nativo */}
           <div className="space-y-1.5">
             <label
-              htmlFor="senha-controle-oficios"
+              htmlFor="password"
               className="block text-xs font-bold uppercase tracking-wider text-slate-700"
             >
               Senha de Autorização
             </label>
             <div className="relative">
               <input
-                id="senha-controle-oficios"
-                name="geapi-controle-oficios-password"
+                ref={passwordInputRef}
+                id="password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={senha}
                 onChange={(e) => {
                   setSenha(e.target.value);
+                  if (error) setError(null);
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  if (target.value !== senha) {
+                    setSenha(target.value);
+                  }
                   if (error) setError(null);
                 }}
                 placeholder="Digite a senha de autorização"
@@ -118,13 +183,14 @@ export const AcessoRestritoCard: React.FC<AcessoRestritoCardProps> = ({ onAuthor
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
                 title={showPassword ? 'Ocultar senha' : 'Exibir senha'}
+                tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          {/* Botão Principal de Acesso (SOMENTE ESTE BOTÃO) */}
+          {/* Botão Principal de Acesso */}
           <button
             type="submit"
             className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"

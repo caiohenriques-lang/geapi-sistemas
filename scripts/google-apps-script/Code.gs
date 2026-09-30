@@ -39,7 +39,7 @@ var CONTRATOS_PERMITIDOS = ['2740/24', '2741/24', '2742/24'];
 // K = 11 (RETORNO F)
 // L = 12 (Fórmula - NÃO TOCAR)
 // M = 13 (HORÁRIO VANDALISMO)
-// N = 14
+// N = 14 (MEDIÇÃO)
 // O = 15 (OBSERVAÇÃO)
 // P = 16
 // Q = 17
@@ -677,6 +677,29 @@ function handleRegistrarRetorno(payload) {
   sheet.getRange(targetRowIndex, 9).setValue(String(payload.oficioRetorno).trim()); // I: OFÍCIO DE RETORNO
   sheet.getRange(targetRowIndex, 10).setValue(dateInformadoF); // J: INFORMADO F
   sheet.getRange(targetRowIndex, 11).setValue(dateRetornoF); // K: RETORNO F
+
+  // Validação e escrita opcional do campo MEDIÇÃO (Coluna N = 14):
+  // Opções válidas permitidas: MANUAL, PARCIAL, SISTEMA TIVIC
+  var ALLOWED_MEDICAO = {
+    'MANUAL': true,
+    'PARCIAL': true,
+    'SISTEMA TIVIC': true
+  };
+
+  if (payload.medicao && String(payload.medicao).trim().length > 0) {
+    var rawMed = String(payload.medicao).trim().toUpperCase();
+    if (ALLOWED_MEDICAO[rawMed]) {
+      sheet.getRange(targetRowIndex, 14).setValue(rawMed); // N: MEDIÇÃO
+    } else {
+      return {
+        ok: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Valor inválido para o campo Medição. Opções permitidas: MANUAL, PARCIAL, SISTEMA TIVIC.'
+        }
+      };
+    }
+  }
 
   // Tratamento da observação complementar:
   if (payload.complementoObservacao && String(payload.complementoObservacao).trim().length > 0) {
