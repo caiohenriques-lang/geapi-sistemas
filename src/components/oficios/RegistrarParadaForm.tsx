@@ -23,6 +23,7 @@ import {
 } from '../../services/oficiosService';
 import { formatDateBR, formatEquipamentosListBR } from '../../utils/dateUtils';
 import { AutocompleteField } from './AutocompleteField';
+import { DateInputBR } from './DateInputBR';
 
 interface RegistrarParadaFormProps {
   onBack: () => void;
@@ -499,72 +500,44 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
           </div>
 
           {/* Campo: DATA DO OFÍCIO */}
-          <div>
-            <label
-              htmlFor="campo-informado-i"
-              className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
-            >
-              DATA DO OFÍCIO <span className="text-red-500 font-bold">*</span>
-            </label>
-            <input
-              id="campo-informado-i"
-              type="date"
-              value={informadoI}
-              onChange={(e) => setInformadoI(e.target.value)}
-              onClick={(e) => {
-                try {
-                  e.currentTarget.showPicker?.();
-                } catch {
-                  // Fallback nativo silencioso se não suportado ou bloqueado
-                }
-              }}
-              disabled={isSubmitting}
-              className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none cursor-pointer ${
-                errors.informadoI
-                  ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'
-                  : 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'
-              } ${isSubmitting ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
-            />
-            {errors.informadoI && (
-              <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
-                <span>&bull;</span> {errors.informadoI}
-              </p>
-            )}
-          </div>
+          <DateInputBR
+            id="campo-informado-i"
+            label="DATA DO OFÍCIO"
+            value={informadoI}
+            onChange={(isoVal, isValid) => {
+              setInformadoI(isoVal);
+              if (isValid && errors.informadoI) {
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.informadoI;
+                  return next;
+                });
+              }
+            }}
+            required
+            disabled={isSubmitting}
+            error={errors.informadoI}
+          />
 
           {/* Campo: DATA DA PARADA */}
-          <div>
-            <label
-              htmlFor="campo-data-parada-i"
-              className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5"
-            >
-              DATA DA PARADA <span className="text-red-500 font-bold">*</span>
-            </label>
-            <input
-              id="campo-data-parada-i"
-              type="date"
-              value={dataParadaI}
-              onChange={(e) => setDataParadaI(e.target.value)}
-              onClick={(e) => {
-                try {
-                  e.currentTarget.showPicker?.();
-                } catch {
-                  // Fallback nativo silencioso se não suportado ou bloqueado
-                }
-              }}
-              disabled={isSubmitting}
-              className={`w-full px-3.5 py-2.5 bg-white text-slate-900 font-medium text-sm rounded-lg border shadow-2xs transition-all outline-none cursor-pointer ${
-                errors.dataParadaI
-                  ? 'border-rose-400 ring-2 ring-rose-100 bg-rose-50/20'
-                  : 'border-slate-300 focus:border-slate-600 focus:ring-2 focus:ring-slate-100'
-              } ${isSubmitting ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
-            />
-            {errors.dataParadaI && (
-              <p className="mt-1 text-xs font-semibold text-rose-600 flex items-center gap-1">
-                <span>&bull;</span> {errors.dataParadaI}
-              </p>
-            )}
-          </div>
+          <DateInputBR
+            id="campo-data-parada-i"
+            label="DATA DA PARADA"
+            value={dataParadaI}
+            onChange={(isoVal, isValid) => {
+              setDataParadaI(isoVal);
+              if (isValid && errors.dataParadaI) {
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.dataParadaI;
+                  return next;
+                });
+              }
+            }}
+            required
+            disabled={isSubmitting}
+            error={errors.dataParadaI}
+          />
 
           {/* Campo: MOTIVO */}
           <div>
