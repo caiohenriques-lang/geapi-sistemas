@@ -372,9 +372,13 @@ export const HistoricoOficios: React.FC<HistoricoOficiosProps> = ({ refreshTrigg
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const nowStr = new Date().toISOString().substring(0, 10);
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const fileName = `Relatorio-Historico-Oficios-${day}-${month}-${year}.csv`;
     link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio_historico_parada_retorno_${nowStr}.csv`);
+    link.setAttribute('download', fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
