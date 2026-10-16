@@ -432,6 +432,25 @@ function isValidOficioFormat(str) {
 }
 
 /**
+ * Validador estrito de data ISO (YYYY-MM-DD) com verificação real de calendário
+ */
+function isValidISODate(str) {
+  if (!str) return false;
+  var s = String(str).trim();
+  var match = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  var year = parseInt(match[1], 10);
+  var month = parseInt(match[2], 10);
+  var day = parseInt(match[3], 10);
+
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+
+  var d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && (d.getMonth() + 1) === month && d.getDate() === day;
+}
+
+/**
  * 3. Grava ocorrência(s) de PARADA (1 linha individual por equipamento com UUID próprio)
  */
 function handleRegistrarParada(payload) {
@@ -488,6 +507,16 @@ function handleRegistrarParada(payload) {
       error: {
         code: 'VALIDATION_ERROR',
         message: 'Campos obrigatórios da parada não foram informados (Data do Ofício, Data da Parada, Motivo são obrigatórios).'
+      }
+    };
+  }
+
+  if (!isValidISODate(payload.informadoI) || !isValidISODate(payload.dataParadaI)) {
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'As datas da parada devem estar no formato ISO válido (YYYY-MM-DD) e existir no calendário.'
       }
     };
   }
@@ -565,12 +594,22 @@ function handleRegistrarParada(payload) {
  * 4. Grava o RETORNO complementando a linha existente
  */
 function handleRegistrarRetorno(payload) {
-  if (!payload || !payload.codigo || !payload.oficioParada || !payload.dataParadaI || !payload.oficioRetorno || !payload.informadoF || !payload.retornoF) {
+  if (!payload || !payload.codigo || !payload.oficioParada || !payload.dataParadaI || !payload.oficioRetorno || !payload.informadoF || !payload.retornoF || String(payload.informadoF).trim() === '' || String(payload.retornoF).trim() === '') {
     return {
       ok: false,
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Campos obrigatórios do retorno não foram informados (Ofício Retorno, Informado F, Retorno F).'
+        message: 'Campos de data do retorno são obrigatórios e não foram informados (Data do Ofício de Retorno, Data do Retorno).'
+      }
+    };
+  }
+
+  if (!isValidISODate(payload.informadoF) || !isValidISODate(payload.retornoF)) {
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'As datas do retorno devem estar no formato ISO válido (YYYY-MM-DD) e existir no calendário.'
       }
     };
   }

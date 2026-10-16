@@ -117,11 +117,11 @@ export const RegistrarRetorno: React.FC<RegistrarRetornoProps> = ({ onBack }) =>
       newErrors.oficioRetorno = 'Informe o ofício no formato número/ano. Ex.: 187/26.';
     }
 
-    if (!informadoF.trim()) {
-      newErrors.informadoF = 'A data de informação do retorno é obrigatória.';
+    if (!informadoF.trim() || !/^\\d{4}-\\d{2}-\\d{2}$/.test(informadoF.trim())) {
+      newErrors.informadoF = 'A data do ofício de retorno é obrigatória e deve estar completa (DD/MM/AAAA).';
     }
-    if (!retornoF.trim()) {
-      newErrors.retornoF = 'A data efetiva de retorno é obrigatória.';
+    if (!retornoF.trim() || !/^\\d{4}-\\d{2}-\\d{2}$/.test(retornoF.trim())) {
+      newErrors.retornoF = 'A data do retorno é obrigatória e deve estar completa (DD/MM/AAAA).';
     }
 
     setErrors(newErrors);
