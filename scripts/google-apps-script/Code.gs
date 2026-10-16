@@ -564,6 +564,11 @@ function handleRegistrarParada(payload) {
 
     // S: ID_CONTROLE único
     sheet.getRange(targetRow, 19).setValue(idControle);
+
+    // Se solicitado acompanhamento do equipamento, pinta a linha operacional (A:S, colunas 1 a 19) com fundo vermelho
+    if (payload.acompanharEquipamento === true || payload.acompanharEquipamento === 'true' || payload.acompanharEquipamento === 1 || payload.acompanharEquipamento === '1') {
+      sheet.getRange(targetRow, 1, 1, 19).setBackground('#FF0000');
+    }
   }
 
   // Invalida o cache do relatório histórico para refletir imediatamente novos lançamentos

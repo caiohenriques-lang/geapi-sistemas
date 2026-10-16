@@ -53,6 +53,7 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
   const [motivo, setMotivo] = useState('');
   const [horarioVandalismo, setHorarioVandalismo] = useState('');
   const [observacao, setObservacao] = useState('');
+  const [acompanharEquipamento, setAcompanharEquipamento] = useState(false);
 
   // UI & Data State
   const [equipamentosList, setEquipamentosList] = useState<string[]>([]);
@@ -208,6 +209,7 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
       motivo: motivo.trim(),
       ...(isVandalismo && horarioVandalismo ? { horarioVandalismo: horarioVandalismo.trim() } : {}),
       ...(observacao.trim() ? { observacao: observacao.trim() } : {}),
+      acompanharEquipamento,
     };
 
     try {
@@ -243,6 +245,7 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
     setMotivo('');
     setHorarioVandalismo('');
     setObservacao('');
+    setAcompanharEquipamento(false);
     setErrors({});
     setErrorMessage(null);
     setSuccessData(null);
@@ -594,6 +597,24 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
               )}
             </div>
           )}
+
+          {/* Checkbox: ACOMPANHAR EQUIPAMENTO */}
+          <div className="sm:col-span-2 flex items-center gap-2.5 py-1">
+            <input
+              id="campo-acompanhar-equipamento"
+              type="checkbox"
+              checked={acompanharEquipamento}
+              onChange={(e) => setAcompanharEquipamento(e.target.checked)}
+              disabled={isSubmitting}
+              className="w-4 h-4 text-slate-900 border-slate-300 rounded focus:ring-slate-100 cursor-pointer"
+            />
+            <label
+              htmlFor="campo-acompanhar-equipamento"
+              className="text-xs font-bold uppercase tracking-wider text-slate-700 cursor-pointer select-none"
+            >
+              Acompanhar Equipamento
+            </label>
+          </div>
 
           {/* Campo: OBSERVAÇÃO (OPCIONAL) */}
           <div className="sm:col-span-2">

@@ -8,6 +8,7 @@ export interface OcorrenciaParadaPayload {
   horarioVandalismo?: string;
   observacao?: string;
   idControle?: string;
+  acompanharEquipamento?: boolean;
 }
 
 export const OPCOES_MEDICAO = [
