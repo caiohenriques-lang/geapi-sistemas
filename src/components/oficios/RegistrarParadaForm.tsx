@@ -194,6 +194,12 @@ export const RegistrarParadaForm: React.FC<RegistrarParadaFormProps> = ({ onBack
 
     setIsSubmitting(true);
 
+    if (!informadoI.trim() || !dataParadaI.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(informadoI) || !/^\d{4}-\d{2}-\d{2}$/.test(dataParadaI)) {
+      setErrorMessage('As datas do ofício e da parada são obrigatórias e devem estar preenchidas corretamente no formato DD/MM/AAAA.');
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload: OcorrenciaParadaPayload = {
       codigos: selectedCodigos,
       oficioParada: oficioParada.trim(),

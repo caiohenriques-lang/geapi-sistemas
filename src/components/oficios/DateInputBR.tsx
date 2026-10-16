@@ -175,7 +175,21 @@ export const DateInputBR: React.FC<DateInputBRProps> = ({
 
   // Manipula quando o campo perde o foco (blur validation)
   const handleBlur = () => {
-    if (displayValue && displayValue.length > 0 && displayValue.length < 10) {
+    if (!displayValue || displayValue.trim().length === 0) {
+      setLocalError(null);
+      onChange('', true);
+      return;
+    }
+    if (displayValue.length === 10) {
+      const validation = parseAndValidateBRDate(displayValue);
+      if (validation.isValid) {
+        setLocalError(null);
+        onChange(validation.iso, true);
+      } else {
+        setLocalError(validation.errorMsg || 'Data inválida no formato DD/MM/AAAA.');
+        onChange('', false);
+      }
+    } else {
       setLocalError('Informe a data completa no formato DD/MM/AAAA.');
       onChange('', false);
     }

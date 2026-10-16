@@ -482,12 +482,12 @@ function handleRegistrarParada(payload) {
     };
   }
 
-  if (!payload.informadoI || !payload.dataParadaI || !payload.motivo) {
+  if (!payload.informadoI || !payload.dataParadaI || !payload.motivo || String(payload.informadoI).trim() === '' || String(payload.dataParadaI).trim() === '') {
     return {
       ok: false,
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Campos obrigatórios da parada não foram informados (Informado I, Data Parada I, Motivo).'
+        message: 'Campos obrigatórios da parada não foram informados (Data do Ofício, Data da Parada, Motivo são obrigatórios).'
       }
     };
   }
